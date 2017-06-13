@@ -31,4 +31,5 @@
   (aref (buffer-lines buffer) line-number))
 
 (defun (setf buffer-line) (line buffer line-number)
+  "Unchecked access to buffer lines."
   (setf (aref (buffer-lines buffer) line-number) line))
