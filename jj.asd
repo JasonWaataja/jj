@@ -7,4 +7,6 @@
   :components ((:module "src"
                         :components
                         ((:file "package")
+                         (:file "conditions")
+                         (:file "frame")
                          (:file "jj")))))
