@@ -1,10 +1,10 @@
 ;;;; jj.asd
 
 (asdf:defsystem #:jj
-  :description "Describe jj here"
-  :author "Your Name <your.name@example.com>"
-  :license "Specify license here"
-  :serial t
-  :components ((:file "package")
-               (:file "jj")))
-
+  :description "Common Lisp text editor"
+  :author "Jason Waataja <jasonswaataja@gmail.com>"
+  :license "MIT"
+  :components ((:module "src"
+                        :components
+                        ((:file "package")
+                         (:file "jj")))))
