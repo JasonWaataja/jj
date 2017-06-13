@@ -4,4 +4,4 @@
 (in-package #:jj)
 
 (define-condition jj-error (error)
-  ((text :initarg text :reader text)))
+  ((text :initarg :text :reader jj-error-text)))
