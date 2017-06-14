@@ -5,7 +5,7 @@
 
 (defclass buffer ()
   ((lines :reader buffer-lines
-          :initarg :reader
+          :initarg :lines
           :initform (make-array 0
                                 :adjustable t
                                 :fill-pointer 0
@@ -24,7 +24,7 @@
                                             :initial-element default-line)))
 
 (defun buffer-lines-count (buffer)
-  (array-dimension buffer 0))
+  (array-dimension (buffer-lines buffer) 0))
 
 (defun buffer-line (buffer line-number)
   "Unchecked access to buffer lines."
