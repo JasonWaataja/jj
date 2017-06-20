@@ -6,13 +6,13 @@
 (defparameter *empty-character* #\Space
   "The character that makes no display.")
 
-(defclass character-display ()
-  ((rows :accessor character-display-rows
+(defclass display ()
+  ((rows :accessor display-rows
          :initarg :rows
          :initform 0
          :type 'integer
          :documentation "Amount of rows the display occupies.")
-   (columns :accessor character-display-columns
+   (columns :accessor display-columns
             :initarg :columns
             :initform 0
             :type 'integer
@@ -26,18 +26,18 @@
 
 (defun set-display-character (display char)
   "Sets each element of DISPLAY to CHAR."
-  (dotimes (i (character-display-rows display))
-    (dotimes (j (character-display-columns display))
+  (dotimes (i (display-rows display))
+    (dotimes (j (display-columns display))
       (write-to-display display char i j))))
 
 (defun dump-display (display)
-  (dotimes (i (character-display-rows display))
-    (dotimes (j (character-display-columns display))
+  (dotimes (i (display-rows display))
+    (dotimes (j (display-columns display))
       (format t "~a" (read-from-display display i j)))
     (format t "~%"))
   (format t "~%"))
 
-(defclass dummy-display (character-display)
+(defclass dummy-display (display)
   ((char-array :accessor dummy-display-char-array
                :initarg :char-array
                :initform nil
@@ -65,26 +65,22 @@
 
 (defun display-test ()
   (let ((disp (make-dummy-display 4 5)))
-    (dotimes (i (character-display-rows disp))
-      (dotimes (j (character-display-columns disp))
+    (dotimes (i (display-rows disp))
+      (dotimes (j (display-columns disp))
         (write-to-display disp #\a i j)))
     (dump-display disp)))
 
 (defclass frame ()
-  ((rows :accessor frame-rows
-         :initarg :rows
-         :initform 0
-         :type 'integer
-         :documentation "Physical rows frame occupies.")
-   (columns :accessor frame-columns
-            :initarg :columns
-            :initform 0
-            :type 'integer
-            :documentation "Physical columns frame occupies.")
-   (display :accessor frame-display
+  ((display :accessor frame-display
             :initarg :display
             :initform nil
             :documentation "The display to write to.")))
+
+(defun frame-rows (frame)
+  (display-rows (frame-display frame)))
+
+(defun frame-columns (frame)
+  (display-columns (frame-display frame)))
 
 (defclass buffer-frame (frame)
   ((buffer :accessor buffer-frame-buffer
@@ -114,16 +110,11 @@
                        rows
                        columns)))
 
-(defun make-buffer-frame (rows columns &key buffer display (row 0) (column 0))
+(defun make-buffer-frame (&key buffer display (row 0) (column 0))
   "Creates a buffer-frame, may throw an INVALID-BUFFER-FRAME-VALUE."
-  (when (or (minusp rows)
-            (minusp columns))
-    (signal-invalid-buffer-frame-value rows columns))
   (make-instance 'buffer-frame
                  :buffer buffer
                  :display display
-                 :rows rows
-                 :columns columns
                  :row row
                  :column column))
 
@@ -151,23 +142,45 @@
 (defun update-frame-test ()
   (let* ((disp (make-dummy-display 4 12))
          (buffer (make-buffer))
-         (frame (make-buffer-frame 4 12
-                                   :buffer buffer
-                                   :display disp
-                                   :row 1
-                                   :column 2)))
+         (frame (make-buffer-frame
+                 :buffer buffer
+                 :display disp
+                 :row 1
+                 :column 2)))
     (vector-push-extend "Hello World" (buffer-lines buffer))
     (vector-push-extend "This is the second line." (buffer-lines buffer))
     (update-frame frame)
     (dump-display disp)))
 
 (defclass composite-frame (frame)
-  ((subframes :accessor composite-frame-subframes
-              :initarg :subframes
-              :initform (make-array 0
-                                    :adjustable t
-                                    :fill-pointer 0)
-              :documentation "The child frames to be displayed.")))
+  ((subdisplays :accessor composite-frame-subdisplays
+                :initarg :subdisplays
+                :initform (make-array 0
+                                      :adjustable t
+                                      :fill-pointer 0)
+                :documentation "The displays for the child frames to be displayed.")
+   (orientation :accessor composite-frame-orientation
+                :initarg :orientation
+                :initform :horizontal
+                :documentation "The direction new frames are opened
+                in. :HORIZONTAL means a vertial split and :VERTICAL means a
+                horizontal split.")))
 
-(defclass horizontal-frame (composite-frame)
-  ())
+(defclass composite-frame-display (display)
+  ((parent :accessor composite-frame-display-parent
+           :initarg :parent
+           :initform nil
+           :documentation "The composite frame that it renders to.")))
+
+(defun make-composite-frame-display (parent size)
+  "Make a COMPOSITE-FRAME-DISPLAY with PARENT and SIZE tall if vertial, SIZE
+wide of horizontal."
+  (if (eql (composite-frame-orientation parent) :vertical)
+      (make-instance 'composite-frame-display
+                     :parent parent
+                     :rows size
+                     :columns (frame-columns parent))
+      (make-instance 'composite-frame-display
+                     :parent parent
+                     :rows (frame-rows parent)
+                     :columns size)))
