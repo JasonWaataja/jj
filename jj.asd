@@ -11,8 +11,8 @@
                         :serial t
                         :components
                         ((:file "package")
-                         (:file "settings")
                          (:file "conditions")
+                         (:file "settings")
                          (:file "buffer")
                          (:file "display")
                          (:file "frame")
