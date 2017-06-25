@@ -10,7 +10,7 @@
          :type 'string
          :documentation "The name of the setting.")
    (default-value :accessor setting-default-value
-          :initarg :value
+          :initarg :default-value
           :initform nil
           :documentation "The value of the setting, can be of any type.")
    (documentation :accessor setting-documentation
@@ -19,16 +19,25 @@
                   :type 'string
                   :documentation "The documentation string for the setting.")))
 
-(defparameter *settings* (make-container 'set-container)
-  "A set of `setting' objects which SETTINGS-LAYERs are built off of.")
+(defparameter *settings* (make-container 'cl-containers:set-container
+                                         :test #'equal)
+  "A set of `setting' objects which SETTINGS-LAYERs are built off off. To
+  manitulate this object, use INSERT-NEW-ITEM with SETTING-NAME as the key,
+  etc.")
+
+(defun find-setting (setting-name)
+  "Acts like CL-CONTAINERS:FIND-ITEM on *SETTINGS* except with the correct key
+finding functions."
+  (search-for-item *settings* setting-name :key #'setting-name))
 
 (defun define-setting (name default-value &optional (documentation ""))
   "Adds a new `setting' to *SETTINGS* with the given values."
-  (insert-item *settings*
+  (insert-new-item *settings*
                (make-instance 'setting
                               :name name
                               :default-value default-value
-                              :documentation documentation)))
+                              :documentation documentation)
+               :key #'setting-name))
 
 (defclass settings-layer ()
   ((settings :accessor settings-layer-settings
@@ -52,6 +61,13 @@
          :setting-name setting-name
          :text (format nil "No such setting: ~a" setting-name)))
 
+(defun set-setting (setting-name setting-value &optional layer)
+  "Sets the `setting' with SETTING-NAME to SETTING-VALUE for LAYER if passed and
+*GLOBAL-SETTINGS* otherwise."
+  (if layer
+      (setf (item-at (settings-layer-settings layer) setting-name) setting-value)
+      (setf (item-at (settings-layer-settings *global-settings*) setting-name) setting-value)))
+
 (defun get-setting (layers setting-name)
   "If LAYERS is a list, then iterate through it, returning the first value of a
 `setting' matching SETTING-NAME. Otherwise, treat LAYERS as a single layer and
@@ -64,7 +80,7 @@ used. If no such setting exists, then a `no-such-setting-error' is signalled."
              (when found
                (return setting-value)))
          finally
-           (let ((setting (item-at *settings* setting-name)))
+           (let ((setting (find-setting setting-name)))
              (if setting
                  (setting-default-value setting)
                  (signal-no-such-setting-error setting-name))))
@@ -72,7 +88,7 @@ used. If no such setting exists, then a `no-such-setting-error' is signalled."
           (item-at (settings-layer-settings layers) setting-name)
         (if found
             setting-value
-            (let ((setting (item-at *settings* setting-name)))
+            (let ((setting (find-setting setting-name)))
               (if setting
                   (setting-default-value setting)
                   (signal-no-such-setting-error setting-name)))))))
