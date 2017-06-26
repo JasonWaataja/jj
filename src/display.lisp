@@ -28,11 +28,17 @@
       (write-to-display display char i j))))
 
 (defun dump-display (display)
+  (dotimes (i (+ (display-columns display) 2))
+    (format t "*"))
+  (format t "~%")
   (dotimes (i (display-rows display))
+    (format t "*")
     (dotimes (j (display-columns display))
       (format t "~a" (read-from-display display i j)))
-    (format t "~%"))
-  (format t "~%"))
+    (format t "*~%"))
+  (dotimes (i (+ (display-columns display) 2))
+    (format t "*"))
+  (format t "~%~%"))
 
 (defclass dummy-display (display)
   ((char-array :accessor dummy-display-char-array

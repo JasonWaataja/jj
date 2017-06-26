@@ -57,6 +57,25 @@
 (defgeneric update-frame (frame)
   (:documentation "Updated the contents of FRAME."))
 
+(defun calculate-tab-width (current-column &optional (tab-width (get-setting 'tab-width)))
+  "Return the width that a tab would occupy if inserted at CURRENT-COLUMN. Uses
+TAB-WIDTH which defaults to the TAB-WIDTH setting."
+  (let* ((new-column (1+ current-column))
+         (tab-count (ceiling new-column tab-width)))
+    (- (* tab-count tab-width) current-column)))
+
+(defun leading-string-width (leading-string)
+  "Calculate the amount of characters wide leading-string would be at the
+beginning of a line. This could be more than just the length of LEADING-STRING
+if there are tabs, for example."
+  (loop for src-char across leading-string
+     with current-width = 0
+     do
+       (cond ((char= src-char #\Tab)
+              (incf current-width (calculate-tab-width current-width)))
+             (t (incf current-width)))
+     finally (return current-width)))
+
 (defmethod update-frame ((frame buffer-frame))
   (loop for relative-line from 0
      for current-line = (+ relative-line (buffer-frame-row frame))

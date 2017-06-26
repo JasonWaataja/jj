@@ -18,5 +18,19 @@
     (is (= (get-setting 'test-setting (list test-layer *global-settings*)) 5))))
 
 (test tab-width-test
-  "Test if the setting TAB-WIDTH is set correctly."
-  (is (= (get-setting 'jj:tab-width) 8)))
+  "Test if the setting TAB-WIDTH is set correctly and columns are calculated correctly."
+  (is (= (get-setting 'jj:tab-width) 8))
+  (is (= (calculate-tab-width 0) 8))
+  (is (= (calculate-tab-width 4) 4))
+  (is (= (calculate-tab-width 7) 1))
+  (is (= (calculate-tab-width 8) 8))
+  (is (= (calculate-tab-width 12) 4))
+  (is (= (calculate-tab-width 16) 8)))
+
+(test leading-string-width-test
+  "Test the function LEADING-STRING-WIDTH."
+  (is (= (leading-string-width "a") 1))
+  (is (= (leading-string-width "	") 8))
+  (is (= (leading-string-width "a	") 8))
+  (is (= (leading-string-width "ab	cd") 10))
+  (is (= (leading-string-width "	ab") 10)))

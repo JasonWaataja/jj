@@ -20,6 +20,8 @@
            #:*global-settings*
            #:no-such-setting-error
            #:signal-no-such-setting-error
+           #:calculate-tab-width
+           #:leading-string-width
            #:find-setting
            #:set-setting
            #:get-setting
