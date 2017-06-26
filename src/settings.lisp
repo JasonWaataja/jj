@@ -6,21 +6,20 @@
 (defclass setting ()
   ((name :accessor setting-name
          :initarg :name
-         :initform ""
-         :type 'string
+         :initform nil
+         :type 'symbol
          :documentation "The name of the setting.")
    (default-value :accessor setting-default-value
-          :initarg :default-value
-          :initform nil
-          :documentation "The value of the setting, can be of any type.")
+     :initarg :default-value
+     :initform nil
+     :documentation "The value of the setting, can be of any type.")
    (documentation :accessor setting-documentation
                   :initarg :documentation
                   :initform ""
                   :type 'string
                   :documentation "The documentation string for the setting.")))
 
-(defparameter *settings* (make-container 'cl-containers:set-container
-                                         :test #'equal)
+(defparameter *settings* (make-container 'cl-containers:set-container)
   "A set of `setting' objects which SETTINGS-LAYERs are built off off. To
   manitulate this object, use INSERT-NEW-ITEM with SETTING-NAME as the key,
   etc.")
@@ -30,20 +29,19 @@
 finding functions."
   (search-for-item *settings* setting-name :key #'setting-name))
 
-(defun define-setting (name default-value &optional (documentation ""))
+(defmacro define-setting (name default-value &optional (documentation ""))
   "Adds a new `setting' to *SETTINGS* with the given values."
-  (insert-new-item *settings*
-               (make-instance 'setting
-                              :name name
-                              :default-value default-value
-                              :documentation documentation)
-               :key #'setting-name))
+  `(insert-new-item *settings*
+                    (make-instance 'setting
+                                   :name ',name
+                                   :default-value ,default-value
+                                   :documentation ,documentation)
+                    :key #'setting-name))
 
 (defclass settings-layer ()
   ((settings :accessor settings-layer-settings
              :initarg :settings
-             :initform (make-container 'simple-associative-container
-                                       :test #'equal)
+             :initform (make-container 'simple-associative-container)
              :documentation "The map of setting names to their values.")))
 
 (defun make-settings-layer ()
@@ -68,7 +66,7 @@ finding functions."
       (setf (item-at (settings-layer-settings layer) setting-name) setting-value)
       (setf (item-at (settings-layer-settings *global-settings*) setting-name) setting-value)))
 
-(defun get-setting (layers setting-name)
+(defun get-setting (setting-name &optional layers)
   "If LAYERS is a list, then iterate through it, returning the first value of a
 `setting' matching SETTING-NAME. Otherwise, treat LAYERS as a single layer and
 get the setting from it. If no matching setting is found, then the default is
@@ -82,8 +80,8 @@ used. If no such setting exists, then a `no-such-setting-error' is signalled."
          finally
            (let ((setting (find-setting setting-name)))
              (if setting
-                 (setting-default-value setting)
-                 (signal-no-such-setting-error setting-name))))
+                 (return (setting-default-value setting))
+                 (return (signal-no-such-setting-error setting-name)))))
       (multiple-value-bind (setting-value found)
           (item-at (settings-layer-settings layers) setting-name)
         (if found
@@ -92,3 +90,6 @@ used. If no such setting exists, then a `no-such-setting-error' is signalled."
               (if setting
                   (setting-default-value setting)
                   (signal-no-such-setting-error setting-name)))))))
+
+(define-setting tab-width 8
+  "The width of tab characters.")

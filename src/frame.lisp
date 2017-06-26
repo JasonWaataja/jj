@@ -65,15 +65,27 @@
                 (< current-line (buffer-lines-count buffer)))
      do
        (loop with line = (buffer-line buffer current-line)
-          for relative-column from 0
-          for current-column = (+ relative-column (buffer-frame-column frame))
+          with relative-column = 0
+          for current-column from (+ relative-column (buffer-frame-column frame))
           while (and (< current-column (length line))
                      (< relative-column (frame-columns frame)))
           do
-            (write-to-display (frame-display frame)
-                              (char line current-column)
-                              relative-line
-                              relative-column))))
+            (let ((src-char (char line current-column)))
+              (cond ((char= src-char #\Tab)
+                     (loop for i from 0
+                        while (and (< i (get-setting 'tab-width))
+                                   (< relative-column (frame-columns frame)))
+                        do
+                          (write-to-display (frame-display frame)
+                                            #\Space
+                                            relative-line
+                                            relative-column)
+                          (incf relative-column)))
+                    (t (write-to-display (frame-display frame)
+                                         (char line current-column)
+                                         relative-line
+                                         relative-column)
+                       (incf relative-column)))))))
 
 (defun update-frame-test ()
   (let* ((disp (make-dummy-display 4 12))
@@ -82,9 +94,9 @@
                  :buffer buffer
                  :display disp
                  :row 1
-                 :column 2)))
+                 :column 0)))
     (vector-push-extend "Hello World" (buffer-lines buffer))
-    (vector-push-extend "This is the second line." (buffer-lines buffer))
+    (vector-push-extend "a	This is the second line." (buffer-lines buffer))
     (update-frame frame)
     (dump-display disp)))
 

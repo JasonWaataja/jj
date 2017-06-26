@@ -22,4 +22,5 @@
            #:signal-no-such-setting-error
            #:find-setting
            #:set-setting
-           #:get-setting))
+           #:get-setting
+           #:tab-width))
