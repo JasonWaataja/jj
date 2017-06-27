@@ -76,6 +76,38 @@ if there are tabs, for example."
              (t (incf current-width)))
      finally (return current-width)))
 
+(defun render-leading-if-needed (line buffer-frame relative-line)
+  "If there is a tab that goes over the fron of the display, renders it
+correctly and returns first the index of the next character in the line to be
+rendered and the relative column to start rendering at next."
+  (loop for current-column from 0
+     for src-char = (char line current-column)
+     for src-char-width = (cond ((char= src-char #\Tab) (calculate-tab-width current-width))
+                                (t 1))
+     with current-width = 0
+     while (< current-width (buffer-frame-column buffer-frame))
+     do
+       (incf current-width src-char-width)
+     finally
+       (when (> current-width (buffer-frame-column buffer-frame))
+         ;; These two conditional branches do the same thing. They could
+         ;; probably be made into a function. This conditional should be added
+         ;; to later, such as for zero-width characters, etc.
+         (cond ((char= src-char #\Tab)
+                (loop for i from (buffer-frame-column buffer-frame) below current-width
+                   do
+                     (write-to-display (frame-display buffer-frame)
+                                       #\Space
+                                       relative-line
+                                       (- i (buffer-frame-column buffer-frame)))))
+               (t (loop for i from (buffer-frame-column buffer-frame) below current-width
+                     do
+                       (write-to-display (frame-display buffer-frame)
+                                         #\Space
+                                         relative-line
+                                         (- i (buffer-frame-column buffer-frame)))))))
+       (return (values current-column (- current-width (buffer-frame-column buffer-frame))))))
+
 (defmethod update-frame ((frame buffer-frame))
   (loop for relative-line from 0
      for current-line = (+ relative-line (buffer-frame-row frame))
@@ -83,28 +115,31 @@ if there are tabs, for example."
      while (and (< relative-line (frame-rows frame))
                 (< current-line (buffer-lines-count buffer)))
      do
-       (loop with line = (buffer-line buffer current-line)
-          with relative-column = 0
-          for current-column from (+ relative-column (buffer-frame-column frame))
-          while (and (< current-column (length line))
-                     (< relative-column (frame-columns frame)))
-          do
-            (let ((src-char (char line current-column)))
-              (cond ((char= src-char #\Tab)
-                     (loop for i from 0
-                        while (and (< i (get-setting 'tab-width))
-                                   (< relative-column (frame-columns frame)))
-                        do
-                          (write-to-display (frame-display frame)
-                                            #\Space
-                                            relative-line
-                                            relative-column)
-                          (incf relative-column)))
-                    (t (write-to-display (frame-display frame)
-                                         (char line current-column)
-                                         relative-line
-                                         relative-column)
-                       (incf relative-column)))))))
+       (multiple-value-bind (current-column relative-column)
+           (render-leading-if-needed (buffer-line buffer current-line) frame relative-line)
+         (loop with line = (buffer-line buffer current-line)
+            while (and (< current-column (length line))
+                       (< relative-column (frame-columns frame)))
+            do
+              (let ((src-char (char line current-column)))
+                (cond ((char= src-char #\Tab)
+                       (loop for i from 0
+                          with tab-width = (calculate-tab-width (- relative-column
+                                                                   (buffer-frame-column frame)))
+                          while (and (< i tab-width)
+                                     (< relative-column (frame-columns frame)))
+                          do
+                            (write-to-display (frame-display frame)
+                                              #\Space
+                                              relative-line
+                                              relative-column)
+                            (incf relative-column)))
+                      (t (write-to-display (frame-display frame)
+                                           (char line current-column)
+                                           relative-line
+                                           relative-column)
+                         (incf relative-column))))
+              (incf current-column)))))
 
 (defun update-frame-test ()
   (let* ((disp (make-dummy-display 4 12))
