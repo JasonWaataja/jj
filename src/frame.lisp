@@ -81,11 +81,11 @@ if there are tabs, for example."
 correctly and returns first the index of the next character in the line to be
 rendered and the relative column to start rendering at next."
   (loop for current-column from 0
+     with current-width = 0
+     while (< current-width (buffer-frame-column buffer-frame))
      for src-char = (char line current-column)
      for src-char-width = (cond ((char= src-char #\Tab) (calculate-tab-width current-width))
                                 (t 1))
-     with current-width = 0
-     while (< current-width (buffer-frame-column buffer-frame))
      do
        (incf current-width src-char-width)
      finally

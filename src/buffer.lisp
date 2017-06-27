@@ -33,3 +33,44 @@
 (defun (setf buffer-line) (line buffer line-number)
   "Unchecked access to buffer lines."
   (setf (aref (buffer-lines buffer) line-number) line))
+
+(defun buffer-append (buffer line)
+  "Adds LINE to the end of the list of lines in BUFFER."
+  (vector-push-extend line (buffer-lines buffer)))
+
+(define-condition no-such-file-error (jj-error)
+  ((pathspec :reader pathspec
+             :initarg :pathspec
+             :documentation "The file that couldn't be opened.")))
+
+(defun signal-no-such-file-error (pathspec)
+  (error 'no-such-file-error
+         :pathspec pathspec
+         :text (format nil "No such file or directory: ~a" pathspec)))
+
+(define-condition unknown-file-error (jj-error)
+  ((pathspec :reader pathspec
+             :initarg :pathspec
+             :documentation "The file that couldn't be opened.")))
+
+(defun signal-unknown-file-error (pathspec)
+  (error 'unknown-file-error
+         :pathspec pathspec
+         :text (format nil "Unknown file error when operating on: ~a" pathspec)))
+
+(defun read-file-into-buffer (buffer pathspec)
+  "Reads the file pointed to by PATHSPEC into BUFFER. May signal a
+`no-such-file-error' if there is no such file or `unknown-file-error' on other
+errors. This function will remember to update the display in the future but it
+doesn't now. Call UPDATE-FRAME after calling."
+  (let ((found nil))
+    (handler-case (with-open-file (reader pathspec :if-does-not-exist nil)
+                    (when reader
+                      (loop for line = (read-line reader nil)
+                         while line
+                         do (buffer-append buffer line))
+                      (setf found t)))
+      (file-error () (signal-unknown-file-error pathspec))
+      (error () (signal-unknown-file-error pathspec)))
+    (unless found
+      (signal-no-such-file-error pathspec))))
