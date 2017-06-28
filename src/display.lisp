@@ -79,20 +79,29 @@
     (dump-display disp)))
 
 (defclass charms-display (display)
-  ((charms-window :accessor charms-display-charms-window
-                  :initarg :charms-window
-                  :initform charms:*standard-window*
-                  :documentation "The window to write to.")))
+  ((window :accessor charms-display-window
+           :initarg :window
+           :initform charms/ll:*stdscr*
+           :documentation "The window to write to.")))
 
-(defun make-charms-display (&optional (window charms:*standard-window*))
+(defun make-charms-display (&optional (window charms/ll:*stdscr*))
   "Make a `charms-display' that uses WINDOW."
-  (make-instance 'charms-display :charms-window window))
+  (multiple-value-bind (rows columns)
+      (charms/ll:get-maxyx window)
+    (make-instance 'charms-display
+                   :window window
+                   :rows rows
+                   :columns columns)))
 
 (defmethod write-to-display ((display charms-display) character row column)
-  (charms:write-char-at-point (charms-display-charms-window display)))
+  (charms/ll:mvwaddch (charms-display-window display) row column (char-code character)))
 
 (defmethod read-from-display ((display charms-display) row column)
-  (charms:char-at-point (charms-display-charms-window display) row column))
+  (multiple-value-bind (y x)
+      (charms/ll:get-yx (charms-display-window display))
+    (let ((ch (charms/ll:mvwinch (charms-display-window display) row column)))
+      (charms/ll:move y x)
+      ch)))
 
 (defmethod refresh-display ((display charms-display))
-  (charms:refresh-window (charms-display-charms-window display)))
+  (charms/ll:wrefresh (charms-display-window display)))
