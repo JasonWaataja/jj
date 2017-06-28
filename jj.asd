@@ -6,7 +6,7 @@
   :license "MIT"
   :homepage "https://github.com/JasonWaataja/jj"
   :version "0.0.0"
-  :depends-on (#:cl-containers)
+  :depends-on (#:cl-containers #:cl-charms)
   :components ((:module "src"
                         :serial t
                         :components

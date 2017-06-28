@@ -21,6 +21,9 @@
 (defgeneric read-from-display (display row column)
   (:documentation "Reads the character at ROW and COLUMN in DISPLAY and returns it."))
 
+(defgeneric refresh-display (display)
+  (:documentation "Makes sure all changes have been written, primarily for curses."))
+
 (defun set-display-character (display char)
   "Sets each element of DISPLAY to CHAR."
   (dotimes (i (display-rows display))
@@ -66,9 +69,30 @@
   (when (dummy-display-should-dump-on-write display)
     (dump-display display)))
 
+(defmethod refresh-display ((display dummy-display)))
+
 (defun display-test ()
   (let ((disp (make-dummy-display 4 5)))
     (dotimes (i (display-rows disp))
       (dotimes (j (display-columns disp))
         (write-to-display disp #\a i j)))
     (dump-display disp)))
+
+(defclass charms-display (display)
+  ((charms-window :accessor charms-display-charms-window
+                  :initarg :charms-window
+                  :initform charms:*standard-window*
+                  :documentation "The window to write to.")))
+
+(defun make-charms-display (&optional (window charms:*standard-window*))
+  "Make a `charms-display' that uses WINDOW."
+  (make-instance 'charms-display :charms-window window))
+
+(defmethod write-to-display ((display charms-display) character row column)
+  (charms:write-char-at-point (charms-display-charms-window display)))
+
+(defmethod read-from-display ((display charms-display) row column)
+  (charms:char-at-point (charms-display-charms-window display) row column))
+
+(defmethod refresh-display ((display charms-display))
+  (charms:refresh-window (charms-display-charms-window display)))
