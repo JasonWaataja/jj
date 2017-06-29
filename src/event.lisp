@@ -66,16 +66,40 @@
       nil
       (string-equal string prefix :end1 (length prefix))))
 
-(defun match-regular-character (input-string)
+(defun make-special-characters ()
+  (let ((special-characters (make-hash-table :test #'equalp)))
+    (setf (gethash "<space>" special-characters) #\Space)
+    special-characters))
+
+(defparameter *special-characters* (make-special-characters)
+  "Map of input character sequences as you might see in a config file such as
+  \"a\" or \"<space>\" to the characters they represent.")
+
+(defun character-expansion-to-character (character-expansion)
+  "Converts character expansion to the character it represents, such as
+  \"<space>\" to the space character. Returns NIL if there is no such
+  character."
+  (loop for test-expansion being the hash-keys in *special-characters*
+     using (hash-value representation)
+     if (string-equal test-expansion character-expansion)
+     return representation
+     finally
+       (return (if (eql (length character-expansion) 1)
+                   (aref character-expansion 0)
+                   nil))))
+
+(defun match-input-character (input-string)
   "If the beginning of INPUT-STRING can be interpreted as an input character,
 then return as the first value the remainder of INPUT-STRING, then the string of
 the character that matched. Returns NIL if nothing matches."
-  ;; TODO: Add more of these later, the <space> here is just an example.
-  (cond ((string-has-prefix-insensitive-p input-string "<space>")
-         (values (subseq input-string (length "<space>")) "<space>"))
-        ;; TODO: Add a check to make sure it's a real character.
-        (t (if (plusp (length input-string))
-               (values (subseq input-string 1) (subseq input-string 0 1))))))
+  (loop for character-expansion being the hash-keys in *special-characters*
+     if (string-has-prefix-insensitive-p input-string character-expansion)
+     return (values (subseq input-string (length character-expansion))
+                    character-expansion)
+     finally
+       (return (if (plusp (length input-string))
+                   (values (subseq input-string 1) (subseq input-string 0 1))
+                   nil))))
 
 (defun match-regex (input-string regex)
   (multiple-value-bind (begin end reg-starts reg-ends)
@@ -88,6 +112,9 @@ the character that matched. Returns NIL if nothing matches."
           (push remaining-string matches)
           (values-list matches))
         nil)))
+
+(defun match-whitespace (input-string)
+  (match-regex input-string "\\s+"))
 
 (defun combine-matches (input-string &rest matchers)
   "For each element of MATCHERS, if it is a `string', match it as a regex, if it
@@ -121,11 +148,58 @@ the order that they appeared in MATCHERS."
        (return (values-list (append (list remaining-string)
                                     (nreverse match-groups))))))
 
+(defun match-control-modified-character (input-string)
+  "Matches strings of the form <C-A>, <c-b>, etc. Captures the second character."
+  (combine-matches input-string
+                   "<[cC]-"
+                   #'match-input-character
+                   ">"))
+
+(defun match-mod-modified-character (input-string)
+  "Matches strings of the form <M-a>, <m-b>, etc. Captures the second character."
+  (combine-matches input-string
+                   "<[mM]-"
+                   #'match-input-character
+                   ">"))
+
+(defun parse-chord (chord-string)
+  "Reads a chord from the beginning of CHORD-STRING and returns the parsed
+`chord' and remaining string if one was found, NIL otherwise."
+  (let ((control-chord-info
+         (multiple-value-list (match-control-modified-character
+                               chord-string))))
+    (when (first control-chord-info)
+      (return-from parse-chord
+        (values (make-chord (character-expansion-to-character
+                             (second control-chord-info)))
+                (first control-chord-info)))))
+  (let ((mod-chord-info
+         (multiple-value-list (match-mod-modified-character
+                               chord-string))))
+    (when (first mod-chord-info)
+      (return-from parse-chord
+        (values (make-chord (character-expansion-to-character
+                             (second mod-chord-info)))
+                (first mod-chord-info)))))
+  (let ((input-character-info
+         (multiple-value-list (match-input-character
+                               chord-string))))
+    (when (first input-character-info)
+      (return-from parse-chord
+        (values (make-chord (second input-character-info))
+                (first input-character-info)))))
+  nil)
+
 (defun parse-key-sequence (sequence-string)
   "Parses SEQUENCE-STRING into a `key-sequence'. These are of the form \"jk\",
-  \"<c-r>t\", etc."
-  (labels ((parse-element (sequence-string)
-             (multiple-value-bind (begin end reg-starts reg-ends)
-                 (cl-ppcre:scan "<[cC]-.>" sequence-string)
-               (if begin
-                   (
+  \"<c-r>t\", etc. Returns nil if it could not be matched"
+  (loop with current-string = sequence-string
+     for match-info = (multiple-value-list (parse-chord current-string))
+     while (first match-info)
+     collect (first match-info) into chords
+     do
+       (setf current-string (second match-info))
+     finally
+       (return (if chords
+                   (apply #'make-key-sequence chords)
+                   nil))))
