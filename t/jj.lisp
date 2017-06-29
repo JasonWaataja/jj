@@ -34,3 +34,29 @@
   (is (= (leading-string-width "a	") 8))
   (is (= (leading-string-width "ab	cd") 10))
   (is (= (leading-string-width "	ab") 10)))
+
+(test string-has-prefix-p-test
+  (is (string-has-prefix-p "ab" "a"))
+  (is (not (string-has-prefix-p "ba" "a")))
+  (is (string-has-prefix-p "abc" "ab")))
+
+(test string-has-prefix-insensitive-p-test
+  (is (string-has-prefix-insensitive-p "ab" "a"))
+  (is (not (string-has-prefix-insensitive-p "ab" "b")))
+  (is (string-has-prefix-insensitive-p "AbC" "aB")))
+
+(test match-regular-character-test
+  (is (string= (match-regular-character "abc") "bc"))
+  (is (string= (match-regular-character "") nil))
+  (is (string= (match-regular-character "<space>ab") "ab")))
+
+(test match-regex-test
+  (is (string= (match-regex "a" "a") ""))
+  (is (string= (match-regex "abc" "d") nil))
+  (is (string= (match-regex "abc" "(a)b") "c")))
+
+(test combine-matches-test
+  (is (string= (combine-matches "a" "a") ""))
+  (is (string= (combine-matches "abc" "a") "bc"))
+  (is (string= (combine-matches "abc<space>de" "abc" #'match-regular-character) "de"))
+  (is (null (combine-matches "abc" "b"))))

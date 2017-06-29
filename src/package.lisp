@@ -25,4 +25,9 @@
            #:find-setting
            #:set-setting
            #:get-setting
-           #:tab-width))
+           #:tab-width
+           #:string-has-prefix-p
+           #:string-has-prefix-insensitive-p
+           #:match-regular-character
+           #:match-regex
+           #:combine-matches))

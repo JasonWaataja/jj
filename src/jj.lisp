@@ -25,4 +25,5 @@
          do
            (update-frame default-frame)
            (refresh-display main-display))
+      (charms/ll:delwin charms-win)
       (charms/ll:endwin))))
