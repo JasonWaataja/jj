@@ -7,7 +7,7 @@
   ((name :accessor setting-name
          :initarg :name
          :initform nil
-         :type 'symbol
+         :type symbol
          :documentation "The name of the setting.")
    (default-value :accessor setting-default-value
      :initarg :default-value
@@ -16,7 +16,7 @@
    (documentation :accessor setting-documentation
                   :initarg :documentation
                   :initform ""
-                  :type 'string
+                  :type string
                   :documentation "The documentation string for the setting.")))
 
 (defparameter *settings* (make-container 'cl-containers:set-container)
@@ -93,3 +93,8 @@ used. If no such setting exists, then a `no-such-setting-error' is signalled."
 
 (define-setting tab-width 8
   "The width of tab characters.")
+
+(define-setting key-sequence-time .5
+  "The time, in seconds, that a key combination waits for the next press. Once
+  this time is exceeded, the program assumes you are using a new key
+  combination.")

@@ -7,12 +7,12 @@
   ((rows :accessor display-rows
          :initarg :rows
          :initform 0
-         :type 'integer
+         :type integer
          :documentation "Amount of rows the display occupies.")
    (columns :accessor display-columns
             :initarg :columns
             :initform 0
-            :type 'integer
+            :type integer
             :documentation "Amount of columns the display occupies.")))
 
 (defgeneric write-to-display (display character row column)

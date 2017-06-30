@@ -26,12 +26,12 @@
    (row :reader buffer-frame-row
         :initarg :row
         :initform 0
-        :type 'integer
+        :type integer
         :documentation "The starting row.")
    (column :reader buffer-frame-column
            :initarg :column
            :initform 0
-           :type 'integer
+           :type integer
            :documentation "The starting column.")))
 
 (define-condition invalid-frame-value (jj-error)

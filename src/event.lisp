@@ -26,6 +26,12 @@
               :documentation "The list of modifier keys for the chord, can
               include :CONTROL or :MOD.")))
 
+(defun chord= (chord1 chord2)
+  (and (char= (chord-character-code chord1)
+              (chord-character-code chord2))
+       (set= (chord-modifiers chord1)
+             (chord-modifiers chord2))))
+
 (defun make-chord (character-code &rest modifiers)
   (let ((modifier-container (make-container 'set-container)))
     (dolist (modifier modifiers)
@@ -41,8 +47,17 @@
                                :element-type 'chord
                                :adjustable t
                                :fill-pointer 0)
-         :type 'chord
+         :type array
          :documentation "The sequence of chords for the sequence.")))
+
+(defun key-sequence= (seq1 seq2)
+  (and (= (cl-containers:size (key-sequence-keys seq1))
+          (cl-containers:size (key-sequence-keys seq2)))
+       (loop for i below (cl-containers:size (key-sequence-keys seq1))
+          if (not (chord= (aref (key-sequence-keys seq1) i)
+                          (aref (key-sequence-keys seq2) i)))
+          return nil
+          finally (return t))))
 
 (defun make-key-sequence (&rest key-chords)
   (let ((keys (make-array 0

@@ -11,7 +11,13 @@
                 #:insert-new-item
                 #:search-for-item
                 #:delete-item
-                #:make-container)
+                #:make-container
+                #:list-container
+                #:dlist-container
+                #:empty!
+                #:empty-p
+                #:append-item
+                #:every-item-p)
   (:export #:setting
            #:*settings*
            #:define-setting
@@ -30,4 +36,13 @@
            #:string-has-prefix-insensitive-p
            #:match-regular-character
            #:match-regex
-           #:combine-matches))
+           #:combine-matches
+           #:chord
+           #:chord=
+           #:chord-character-code
+           #:chord-modifiers
+           #:make-chord
+           #:key-sequence
+           #:key-sequence-keys
+           #:key-sequence=
+           #:make-key-sequence))
