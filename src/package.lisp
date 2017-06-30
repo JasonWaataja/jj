@@ -17,7 +17,9 @@
                 #:empty!
                 #:empty-p
                 #:append-item
-                #:every-item-p)
+                #:every-item-p
+                #:iterate-container
+                #:iterate-elements)
   (:export #:setting
            #:*settings*
            #:define-setting

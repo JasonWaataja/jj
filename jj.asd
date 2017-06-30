@@ -18,6 +18,7 @@
                          (:file "display")
                          (:file "frame")
                          (:file "time")
+                         (:file "input")
                          (:file "event")
                          (:file "mode")
                          (:file "jj")))))

@@ -14,7 +14,12 @@
                     :initarg :last-chord-time
                     :initform (get-time)
                     :type 'float
-                    :documentation "The time the last chord was pressed.")))
+                    :documentation "The time the last chord was pressed.")
+   (remaining-bindings :accessor key-stroke-buffer-remaining-bindings
+                       :initarg :remaining-bindings
+                       :initform (make-container 'dlist-container)
+                       :type 'dlist-container
+                       :documentation "The bindings to check on next key press.")))
 
 (defun make-key-stroke-buffer ()
   (make-instance 'key-stroke-buffer))
@@ -25,7 +30,8 @@
 (defun clear-key-stroke-buffer (buffer)
   "Removes all keys from BUFFER and resets time."
   (empty! (key-stroke-buffer-chords buffer))
-  (setf (key-stroke-buffer-last-chord-time buffer) 0))
+  (setf (key-stroke-buffer-last-chord-time buffer) 0)
+  (empty! (key-stroke-buffer-remaining-bindings buffer)))
 
 (defun update-key-stroke-buffer (buffer &optional chord)
   "Mean to be called on BUFFER on every instance of the main loop. Updates the
@@ -68,6 +74,10 @@ state of BUFFER."
 (defgeneric process-event (mode event)
   (:documentation "Process EVENT based on MODE."))
 
+(defgeneric process-key (mode chord)
+  (:documentation "Take a key, which can have modifiers, hence using `chord',
+  and process it based on MODE."))
+
 (defun key-stroke-buffer-matches-binding-p (buffer binding)
   "Checks if BINDING is matched by the sequence in BUFFER. This function doesn't
 check for following sequences, the caller should do that."
@@ -89,6 +99,20 @@ check for following sequences, the caller should do that."
 (defparameter *current-mode* (make-instance 'normal-mode)
   "The current mode that the editor is in.")
 
-(defmethod process-mode ((mode insert-mode) (event key-event)))
+;; (defun process-input (chord)
+;;   "Meant to be the main function called to process input, meant to be called
+;; every instance of the main loop. Process chord based on bindings and the current
+;; mode."
+;;   (
 
-(defmethod process-mode ((mode normal-mode) (event key-event)))
+;; (defmethod process-mode ((mode insert-mode) (event key-event)))
+
+;; (defmethod process-mode ((mode normal-mode) (event key-event)))
+
+;; (defun process-key-bindings (key-buffer)
+;;   "Checks if the keys in KEY-BUFFER match each binding. Executes the correct
+;; action and clears it if it does."
+;;   (flet ((process-binding (binding)
+;;            (when (key-stroke-buffer-matches-binding-p *key-stroke-buffer* binding)
+;;              (if (key-binding-follow-sequences binding)
+;;                  (
