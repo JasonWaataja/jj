@@ -17,6 +17,7 @@
                          (:file "buffer")
                          (:file "display")
                          (:file "frame")
+                         (:file "time")
                          (:file "event")
                          (:file "mode")
                          (:file "jj")))))

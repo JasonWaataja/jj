@@ -19,10 +19,12 @@
                            :display main-display)))
       (update-frame default-frame)
       (refresh-display main-display)
+      (update-time)
       (loop for ch = (charms/ll:wgetch charms-win)
          while (or (eql ch charms/ll:ERR)
                    (not (eql ch (char-code #\a))))
          do
+           (update-time)
            (update-frame default-frame)
            (refresh-display main-display))
       (charms/ll:delwin charms-win)
