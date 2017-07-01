@@ -58,11 +58,24 @@
                      arise from remapped keys.")
    (action :accessor key-binding-action
            :initarg :action
-           :initform ""
            :documentation "The thing to do when the binding is activated. It can
            be a `key-sequence', in which case the new keys are added to the
            queue. It can be a function, in which case the function is
            called.")))
+
+(defun make-key-binding (activation-sequence &key (follow-sequences nil) action)
+  "If activation-sequence is a `string', parse it into a key sequence. Otherwise
+it is assumed that ACTIVATION-SEQUENCE is a `key-sequence'."
+  (let ((key-sequence (if (stringp activation-sequence)
+                          (parse-key-sequence activation-sequence)
+                          activation-sequence))
+        (new-action (if (stringp action)
+                        (parse-key-sequence action)
+                        action)))
+    (make-instance 'key-binding
+                   :activation-sequence key-sequence
+                   :follow-sequences follow-sequences
+                   :action new-action)))
 
 (defclass mode ()
   ((key-bindings :accessor mode-key-bindings
@@ -71,6 +84,17 @@
                  :type vector-container
                  :documentation "The list of key bindings. Combinations at the
                  start have priority.")))
+
+(defun add-mode-binding (mode binding)
+  "Adds BINDING to the front of the bindings for MODE."
+  (insert-item-at (mode-key-bindings mode) binding 0))
+
+(defun create-mode-binding (mode activation-sequence &key (follow-sequences nil) action)
+  "Combines ADD-MODE-BINDING and MAKE-KEY-BINDING."
+  (add-mode-binding mode
+                    (make-key-binding activation-sequence
+                                      :follow-sequences follow-sequences
+                                      :action action)))
 
 (defgeneric process-event (mode event)
   (:documentation "Process EVENT based on MODE."))
@@ -143,7 +167,7 @@ of keys."
     (and (= length (key-stroke-buffer-size *key-stroke-buffer*))
          (loop for i below length
             unless (chord= (item-at seq i)
-                           (item-at (key-stroke-buffer-chords *key-stroke-buffer*)))
+                           (item-at (key-stroke-buffer-chords *key-stroke-buffer*) i))
             return nil
             finally (return t)))))
 
@@ -167,7 +191,9 @@ were activated and a list of new keys to process of there were."
       (if (functionp (key-binding-action binding))
           (funcall (key-binding-action binding))
           (do-container (chord (key-sequence-keys (key-binding-action binding)))
-            (push chord remapped-keys)))
+            (if (key-binding-follow-sequences binding)
+                (push chord remapped-keys)
+                (process-key *current-mode* chord))))
       (clear-key-stroke-buffer *key-stroke-buffer*))
     (nreverse remapped-keys)))
 
@@ -186,6 +212,9 @@ mode."
   ;; Returns a list of keys that would be processed due to remapping, NIL if no
   ;; remappings were activated.
   (labels ((process-chord (chord)
+             (format t "Processing chord ~a~%" chord)
+             (do-container (chord (key-stroke-buffer-chords *key-stroke-buffer*))
+               (format t "~a~%" (chord-character-code chord)))
              (if (key-stroke-buffer-empty-p *key-stroke-buffer*)
                  (fill-remaining-bindings chord)
                  (filter-remaining-bindings chord))

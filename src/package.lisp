@@ -55,6 +55,23 @@
            #:key-sequence
            #:key-sequence-keys
            #:key-sequence=
+           #:parse-key-sequence
            #:make-key-sequence
            #:do-container
-           #:container-append))
+           #:container-append
+           #:process-input
+           #:clear-key-stroke-buffer
+           #:clear-stroke-buffer-empty-p
+           #:key-stroke-buffer-size
+           #:*key-stroke-buffer*
+           #:key-binding
+           #:key-binding-activation-sequence
+           #:key-binding-follow-sequences
+           #:key-binding-action
+           #:make-key-binding
+           #:mode
+           #:mode-key-bindings
+           #:add-mode-binding
+           #:create-mode-binding
+           #:*current-mode*
+           #:process-input))

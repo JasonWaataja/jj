@@ -9,6 +9,7 @@
 (defclass chord ()
   ((character-code :reader chord-character-code
                    :initarg :character-code
+                   :type character
                    :documentation "The primary character for the chord.")
    (modifiers :reader chord-modifiers
               :initarg :modifiers
@@ -173,7 +174,8 @@ the order that they appeared in MATCHERS."
                                chord-string))))
     (when (first input-character-info)
       (return-from parse-chord
-        (values (make-chord (second input-character-info))
+        (values (make-chord (character-expansion-to-character
+                             (second input-character-info)))
                 (first input-character-info)))))
   nil)
 

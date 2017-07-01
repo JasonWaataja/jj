@@ -99,3 +99,50 @@
              (do-container (item test-vec sum)
                (incf sum item)))
            4))))
+
+(test parse-key-sequence-test
+  ;; TODO: Check what happens on an empty string, I forget what it should do.
+  (let ((seq1 (parse-key-sequence "a"))
+        (seq2 (parse-key-sequence "ab"))
+        (seq3 (parse-key-sequence "<space>a"))
+        (seq4 (parse-key-sequence "a<space>")))
+    (is (= (cl-containers:size (key-sequence-keys seq1)) 1))
+    (is (chord= (cl-containers:item-at (key-sequence-keys seq1) 0)
+                (make-chord #\a)))
+    (is (= (cl-containers:size (key-sequence-keys seq2)) 2))
+    (is (chord= (cl-containers:item-at (key-sequence-keys seq2) 0)
+                (make-chord #\a)))
+    (is (chord= (cl-containers:item-at (key-sequence-keys seq2) 1)
+                (make-chord #\b)))
+    (is (= (cl-containers:size (key-sequence-keys seq3)) 2))
+    (is (chord= (cl-containers:item-at (key-sequence-keys seq3) 0)
+                (make-chord #\Space)))
+    (is (chord= (cl-containers:item-at (key-sequence-keys seq3) 1)
+                (make-chord #\a)))
+    (is (= (cl-containers:size (key-sequence-keys seq4)) 2))
+    (is (chord= (cl-containers:item-at (key-sequence-keys seq4) 0)
+                (make-chord #\a)))
+    (is (chord= (cl-containers:item-at (key-sequence-keys seq4) 1)
+                (make-chord #\Space)))))
+
+(test process-input-test
+  (let ((test-var 0))
+    (flet ((make-test-var-setter (val)
+             (lambda () (setf test-var val))))
+      (create-mode-binding *current-mode* "a"
+                           :action "b"
+                           :follow-sequences t)
+      (create-mode-binding *current-mode* "b"
+                           :action (make-test-var-setter 1))
+      ;; Dummy that shouldn't be activated.
+      (create-mode-binding *current-mode* "ab"
+                           :action (make-test-var-setter 2))
+      (create-mode-binding *current-mode* "cd"
+                           :action (make-test-var-setter 3))
+      (clear-key-stroke-buffer *key-stroke-buffer*)
+      (process-input (make-chord #\a))
+      (is (= test-var 1))
+      (clear-key-stroke-buffer *key-stroke-buffer*)
+      (process-input (make-chord #\c))
+      (process-input (make-chord #\d))
+      (is (= test-var 3)))))
