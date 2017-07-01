@@ -33,43 +33,25 @@
 (defclass key-sequence ()
   ((keys :reader key-sequence-keys
          :initarg :keys
-         :initform (make-array 0
-                               :element-type 'chord
-                               :adjustable t
-                               :fill-pointer 0)
-         :type array
+         :initform (make-container 'vector-container)
+         :type 'vector-container
          :documentation "The sequence of chords for the sequence.")))
 
 (defun key-sequence= (seq1 seq2)
   (and (= (cl-containers:size (key-sequence-keys seq1))
           (cl-containers:size (key-sequence-keys seq2)))
        (loop for i below (cl-containers:size (key-sequence-keys seq1))
-          if (not (chord= (aref (key-sequence-keys seq1) i)
-                          (aref (key-sequence-keys seq2) i)))
+          if (not (chord= (item-at (key-sequence-keys seq1) i)
+                          (item-at (key-sequence-keys seq2) i)))
           return nil
           finally (return t))))
 
 (defun make-key-sequence (&rest key-chords)
-  (let ((keys (make-array 0
-                          :element-type 'chord
-                          :adjustable t
-                          :fill-pointer 0)))
+  (let ((keys (make-container 'vector-container)))
     (dolist (chord key-chords)
-      (vector-push-extend chord keys))
+      (container-append keys chord))
     (make-instance 'key-sequence
                    :keys keys)))
-
-(defun string-has-prefix-p (string prefix)
-  "Returns if STRING begins with PREFIX, case sensitive."
-  (if (< (length string) (length prefix))
-      nil
-      (string= string prefix :end1 (length prefix))))
-
-(defun string-has-prefix-insensitive-p (string prefix)
-  "Returns if STRING begins with PREFIX, case insensitive."
-  (if (< (length string) (length prefix))
-      nil
-      (string-equal string prefix :end1 (length prefix))))
 
 (defun make-special-characters ()
   (let ((special-characters (make-hash-table :test #'equalp)))

@@ -6,8 +6,8 @@
 (defclass key-stroke-buffer ()
   ((chords :accessor key-stroke-buffer-chords
            :initarg :chords
-           :initform (make-container 'dlist-container)
-           :type dlist-container
+           :initform (make-container 'vector-container)
+           :type vector-container
            :documentation "The list of chords that were pressed, the most recent
            is last in the list.")
    (last-chord-time :accessor key-stroke-buffer-last-chord-time
@@ -17,8 +17,8 @@
                     :documentation "The time the last chord was pressed.")
    (remaining-bindings :accessor key-stroke-buffer-remaining-bindings
                        :initarg :remaining-bindings
-                       :initform (make-container 'dlist-container)
-                       :type 'dlist-container
+                       :initform (make-container 'vector-container)
+                       :type 'vector-container
                        :documentation "The bindings to check on next key press.")))
 
 (defun make-key-stroke-buffer ()
@@ -33,14 +33,14 @@
   (setf (key-stroke-buffer-last-chord-time buffer) 0)
   (empty! (key-stroke-buffer-remaining-bindings buffer)))
 
-(defun update-key-stroke-buffer (buffer &optional chord)
-  "Mean to be called on BUFFER on every instance of the main loop. Updates the
-state of BUFFER."
-  (when (> (- (get-current-loop-time) (key-stroke-buffer-last-chord-time buffer))
-           (get-setting 'key-sequence-time))
-    (clear-key-stroke-buffer buffer))
-  (when chord
-    (append-item (key-stroke-buffer-chords buffer) chord)))
+(defun key-stroke-buffer-size (buffer)
+  (cl-containers:size (key-stroke-buffer-chords buffer)))
+
+(defun append-key-to-buffer (buffer chord)
+  "Adds CHORD to the end and updates LAST-CHORD-TIME."
+  (container-append (key-stroke-buffer-chords buffer) chord)
+  (setf (key-stroke-buffer-last-chord-time buffer)
+        (get-current-loop-time)))
 
 (defparameter *key-stroke-buffer* (make-key-stroke-buffer)
   "The storage for the list of previously pressed keys.")
@@ -60,14 +60,15 @@ state of BUFFER."
            :initarg :action
            :initform ""
            :documentation "The thing to do when the binding is activated. It can
-           be a `string', in which case the new keys are added to the queue. It
-           can be a function, in which case the function is called.")))
+           be a `key-sequence', in which case the new keys are added to the
+           queue. It can be a function, in which case the function is
+           called.")))
 
 (defclass mode ()
   ((key-bindings :accessor mode-key-bindings
                  :initarg :key-bindings
-                 :initform (make-container 'dlist-container)
-                 :type dlist-container
+                 :initform (make-container 'vector-container)
+                 :type vector-container
                  :documentation "The list of key bindings. Combinations at the
                  start have priority.")))
 
@@ -77,6 +78,18 @@ state of BUFFER."
 (defgeneric process-key (mode chord)
   (:documentation "Take a key, which can have modifiers, hence using `chord',
   and process it based on MODE."))
+
+(defun chord-matches-binding-p (binding chord index)
+  "Checks if the character at INDEX matches the corresponding key in
+KEY-SEQUENCE. Makes sure to account for being of out of bounds. Also returns if
+it matched the last character of the binding. This is so that the caller can use
+that binding and not keep checking others."
+  (let* ((seq (key-sequence-keys (key-binding-activation-sequence binding)))
+         (length (cl-containers:size seq))
+         (matches (and (< index length)
+                       (chord= chord
+                               (item-at seq index)))))
+    (values matches (= index (1- length)))))
 
 (defun key-stroke-buffer-matches-binding-p (buffer binding)
   "Checks if BINDING is matched by the sequence in BUFFER. This function doesn't
@@ -94,25 +107,93 @@ check for following sequences, the caller should do that."
 
 (defclass insert-mode (mode) ())
 
+(defmethod process-key ((mode insert-mode) chord))
+
 (defclass normal-mode (mode) ())
+
+(defmethod process-key ((mode normal-mode) chord))
 
 (defparameter *current-mode* (make-instance 'normal-mode)
   "The current mode that the editor is in.")
 
-;; (defun process-input (chord)
-;;   "Meant to be the main function called to process input, meant to be called
-;; every instance of the main loop. Process chord based on bindings and the current
-;; mode."
-;;   (
+(defun fill-remaining-bindings (chord)
+  "Called from PROCESS-INPUT to start filling the remaining bindings based on
+the current mode."
+  (do-container (binding (mode-key-bindings *current-mode*))
+    (when (chord-matches-binding-p binding
+                                   chord
+                                   0)
+      (insert-item (key-stroke-buffer-remaining-bindings
+                    *key-stroke-buffer*)
+                   binding))))
 
-;; (defmethod process-mode ((mode insert-mode) (event key-event)))
+(defun filter-remaining-bindings (chord)
+  (delete-item-if (key-stroke-buffer-remaining-bindings *key-stroke-buffer*)
+                  (lambda (binding)
+                    (not (chord-matches-binding-p binding
+                                                  chord
+                                                  (key-stroke-buffer-size
+                                                   *key-stroke-buffer*))))))
 
-;; (defmethod process-mode ((mode normal-mode) (event key-event)))
+(defun complete-binding-p (binding)
+  "Returns if binding both matches *KEY-STROKE-BUFFER* and has the same number
+of keys."
+  (let* ((seq (key-sequence-keys (key-binding-activation-sequence binding)))
+         (length (cl-containers:size seq)))
+    (and (= length (key-stroke-buffer-size *key-stroke-buffer*))
+         (loop for i below length
+            unless (chord= (item-at seq i)
+                           (item-at (key-stroke-buffer-chords *key-stroke-buffer*)))
+            return nil
+            finally (return t)))))
 
-;; (defun process-key-bindings (key-buffer)
-;;   "Checks if the keys in KEY-BUFFER match each binding. Executes the correct
-;; action and clears it if it does."
-;;   (flet ((process-binding (binding)
-;;            (when (key-stroke-buffer-matches-binding-p *key-stroke-buffer* binding)
-;;              (if (key-binding-follow-sequences binding)
-;;                  (
+(defun on-no-matches ()
+  "Called when a new key would not match any key bindings. Dumps keys currently
+in the buffer and processes the new one."
+  (do-container (chord (key-stroke-buffer-chords *key-stroke-buffer*))
+    (process-key *current-mode* chord))
+  (clear-key-stroke-buffer *key-stroke-buffer*))
+
+(defun execute-matching-bindings ()
+  "Called when a new key still has potential candidates. Checks each to see if
+would activate a binding. If it does, execute that binding and clear the
+buffer. Otherwise, simply append it to the buffer. Returns NIL if no remappings
+were activated and a list of new keys to process of there were."
+  (let ((binding (some-element-p (key-stroke-buffer-remaining-bindings
+                                  *key-stroke-buffer*)
+                                 #'complete-binding-p))
+        (remapped-keys nil))
+    (when binding
+      (if (functionp (key-binding-action binding))
+          (funcall (key-binding-action binding))
+          (do-container (chord (key-sequence-keys (key-binding-action binding)))
+            (push chord remapped-keys)))
+      (clear-key-stroke-buffer *key-stroke-buffer*))
+    (nreverse remapped-keys)))
+
+(defun process-input (chord)
+  "Meant to be the main function called to process input, meant to be called
+every instance of the main loop. Process chord based on bindings and the current
+mode."
+  ;; Flush *KEY-STROKE-BUFFER* when a key hasn't been pressed in a while.
+  (when (and (not (key-stroke-buffer-empty-p *key-stroke-buffer*))
+             (> (- (get-current-loop-time)
+                   (key-stroke-buffer-last-chord-time *key-stroke-buffer*))
+                (get-setting 'key-sequence-time)))
+    (do-container (chord (key-stroke-buffer-chords *key-stroke-buffer*))
+      (process-key *current-mode* chord))
+    (clear-key-stroke-buffer *key-stroke-buffer*))
+  ;; Returns a list of keys that would be processed due to remapping, NIL if no
+  ;; remappings were activated.
+  (labels ((process-chord (chord)
+             (if (key-stroke-buffer-empty-p *key-stroke-buffer*)
+                 (fill-remaining-bindings chord)
+                 (filter-remaining-bindings chord))
+             (append-key-to-buffer *key-stroke-buffer* chord)
+             (cond ((empty-p (key-stroke-buffer-remaining-bindings *key-stroke-buffer*))
+                    (on-no-matches)
+                    nil)
+                   (t (execute-matching-bindings)))))
+    (loop for chords = (list chord) then (append (process-chord (first chords))
+                                                 (rest chords))
+       while chords)))

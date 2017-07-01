@@ -46,9 +46,9 @@
   (is (string-has-prefix-insensitive-p "AbC" "aB")))
 
 (test match-regular-character-test
-  (is (string= (match-regular-character "abc") "bc"))
-  (is (string= (match-regular-character "") nil))
-  (is (string= (match-regular-character "<space>ab") "ab")))
+  (is (string= (match-input-character "abc") "bc"))
+  (is (string= (match-input-character "") nil))
+  (is (string= (match-input-character "<space>ab") "ab")))
 
 (test match-regex-test
   (is (string= (match-regex "a" "a") ""))
@@ -58,7 +58,7 @@
 (test combine-matches-test
   (is (string= (combine-matches "a" "a") ""))
   (is (string= (combine-matches "abc" "a") "bc"))
-  (is (string= (combine-matches "abc<space>de" "abc" #'match-regular-character) "de"))
+  (is (string= (combine-matches "abc<space>de" "abc" #'match-input-character) "de"))
   (is (null (combine-matches "abc" "b"))))
 
 (test keys-test
@@ -76,3 +76,26 @@
           (seq3 (make-key-sequence chord5 chord6 chord4)))
       (is (key-sequence= seq1 seq2))
       (is (not (key-sequence= seq1 seq3))))))
+
+(test container-append-test
+  (let ((test-vec (cl-containers:make-container 'cl-containers:vector-container)))
+    (container-append test-vec 1)
+    (container-append test-vec 3)
+    (is (= (cl-containers:item-at test-vec 0) 1))
+    (is (= (cl-containers:item-at test-vec 1) 3))))
+
+(test do-container-test
+  (let ((test-vec (cl-containers:make-container 'cl-containers:vector-container)))
+    (container-append test-vec 1)
+    (container-append test-vec 3)
+    (let ((items nil))
+      (is (eql (do-container (item test-vec)
+                 (push item items))
+               nil))
+      (is (= (length items) 2))
+      (is (= (first items) 3))
+      (is (= (second items) 1)))
+    (is (= (let ((sum 0))
+             (do-container (item test-vec sum)
+               (incf sum item)))
+           4))))

@@ -5,15 +5,23 @@
   (:import-from #:cl-containers
                 #:simple-associative-container
                 #:set-container
+                #:array-container
                 #:item-at
                 #:find-item
                 #:insert-item
                 #:insert-new-item
+                #:insert-item-at
+                #:collect-items
                 #:search-for-item
                 #:delete-item
                 #:make-container
                 #:list-container
                 #:dlist-container
+                #:vector-container
+                #:delete-item
+                #:delete-item-if
+                #:delete-index
+                #:some-element-p
                 #:empty!
                 #:empty-p
                 #:append-item
@@ -36,7 +44,7 @@
            #:tab-width
            #:string-has-prefix-p
            #:string-has-prefix-insensitive-p
-           #:match-regular-character
+           #:match-input-character
            #:match-regex
            #:combine-matches
            #:chord
@@ -47,4 +55,6 @@
            #:key-sequence
            #:key-sequence-keys
            #:key-sequence=
-           #:make-key-sequence))
+           #:make-key-sequence
+           #:do-container
+           #:container-append))

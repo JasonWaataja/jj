@@ -19,3 +19,28 @@ SET1 is in SET2."
        (cl-containers:every-item-p set1
                                    (lambda (item)
                                      (find-item set2 item)))))
+
+(defun string-has-prefix-p (string prefix)
+  "Returns if STRING begins with PREFIX, case sensitive."
+  (if (< (length string) (length prefix))
+      nil
+      (string= string prefix :end1 (length prefix))))
+
+(defun string-has-prefix-insensitive-p (string prefix)
+  "Returns if STRING begins with PREFIX, case insensitive."
+  (if (< (length string) (length prefix))
+      nil
+      (string-equal string prefix :end1 (length prefix))))
+
+(defun container-append (container item)
+  "Operates on a cl-containers container, which doesn't have append for some
+  reason."
+  (insert-item-at container
+                  item
+                  (cl-containers:size container)))
+
+(defmacro do-container ((var container &optional result) &body body)
+  `(progn (iterate-container ,container
+                             (lambda (,var)
+                               ,@body))
+          ,result))
