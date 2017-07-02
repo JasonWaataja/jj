@@ -212,9 +212,6 @@ mode."
   ;; Returns a list of keys that would be processed due to remapping, NIL if no
   ;; remappings were activated.
   (labels ((process-chord (chord)
-             (format t "Processing chord ~a~%" chord)
-             (do-container (chord (key-stroke-buffer-chords *key-stroke-buffer*))
-               (format t "~a~%" (chord-character-code chord)))
              (if (key-stroke-buffer-empty-p *key-stroke-buffer*)
                  (fill-remaining-bindings chord)
                  (filter-remaining-bindings chord))
@@ -226,3 +223,41 @@ mode."
     (loop for chords = (list chord) then (append (process-chord (first chords))
                                                  (rest chords))
        while chords)))
+
+(define-condition override-binding-error (jj-error)
+  ((old-binding :reader override-binding-error-old-binding
+                :initarg :old-binding)
+   (new-binding :reader override-binding-error-new-binding
+                :initarg :new-binding)))
+
+(defun signal-override-binding-error (old-binding new-binding)
+  "Signals a `override-binding-error'"
+  (error 'override-binding-error
+         :old-binding old-binding
+         :new-binding new-binding
+         ;; TODO: Add nicer printing for the whole program in general.
+         :text (format nil "Overriding ~a with ~a" old-binding new-binding)))
+
+;;; These functions are probably what the use is going to use inf configuration for modes.
+(defun bind-keys (activation-sequence action &key
+                                               (follow-sequences nil)
+                                               (mode *current-mode*)
+                                               (if-rebind :error))
+  "Like CREATE-MODE-BINDING, but also checks if it matches any bindings. The
+possible values for IF-REBIND are :ERROR and NIL, which control what happens
+when the binding would overwrite an existing one. If the value is :ERROR, then
+it may signal an `override-binding-error`. Returns NIL if NIL is passed."
+  (let* ((binding (make-key-binding activation-sequence
+                                    :follow-sequences follow-sequences
+                                    :action action))
+         (input-seq (key-binding-activation-sequence binding)))
+    (do-container (existing-binding (mode-key-bindings mode))
+      (when (key-sequence= (key-binding-activation-sequence existing-binding)
+                           input-seq)
+        (if (eql if-rebind :error)
+            (restart-case (signal-override-binding-error existing-binding
+                                                         binding)
+              (use-new-binding ())
+              (keep-old-binding () (return-from bind-keys)))
+            (return-from bind-keys))))
+    (add-mode-binding mode binding)))

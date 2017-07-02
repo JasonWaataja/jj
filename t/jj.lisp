@@ -140,6 +140,9 @@
       (create-mode-binding *current-mode* "cd"
                            :action (make-test-var-setter 3))
       (clear-key-stroke-buffer *key-stroke-buffer*)
+      (process-input (make-chord #\c))
+      (is (= test-var 0))
+      (clear-key-stroke-buffer *key-stroke-buffer*)
       (process-input (make-chord #\a))
       (is (= test-var 1))
       (clear-key-stroke-buffer *key-stroke-buffer*)

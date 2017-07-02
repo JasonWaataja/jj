@@ -98,3 +98,6 @@ used. If no such setting exists, then a `no-such-setting-error' is signalled."
   "The time, in seconds, that a key combination waits for the next press. Once
   this time is exceeded, the program assumes you are using a new key
   combination.")
+
+(define-setting dump-key-events nil
+  "Print debug information when receiving a key event.")
