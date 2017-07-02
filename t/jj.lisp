@@ -149,3 +149,30 @@
       (process-input (make-chord #\c))
       (process-input (make-chord #\d))
       (is (= test-var 3)))))
+
+(defmacro test-condition ((condition &rest other-conditions) &body body)
+  "Tests if a condition of type CONDITION or OTHER-CONDITIONS is
+signalled. Returns the condition if it was, NIL otherwise."
+  (let ((condition-name (gensym)))
+    `(handler-case
+         (progn
+           ,@body
+           nil)
+       (,condition (,condition-name) ,condition-name)
+       ,@(loop for condition in other-conditions
+            collect `(,condition (,condition-name) ,condition-name)))))
+
+(test make-text-position-test
+  (let ((buffer (make-buffer)))
+    (buffer-append buffer "abc")
+    (buffer-append buffer "cd")
+    (let ((position-1 (make-text-position buffer 0))
+          (position-2 (make-text-position buffer 5)))
+      (is (= (text-position-line-number position-1) 0))
+      (is (= (text-position-line-position position-1) 0))
+      (is (= (text-position-line-number position-2) 1))
+      (is (= (text-position-line-position position-2) 1)))
+    (is (not (null (test-condition (invalid-text-position-error)
+                     (make-text-position buffer 6)))))
+    (is (not (null (test-condition (invalid-text-position-error)
+                     (make-text-position buffer -1)))))))

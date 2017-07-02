@@ -20,5 +20,6 @@
                          (:file "time")
                          (:file "input")
                          (:file "event")
+                         (:file "text")
                          (:file "mode")
                          (:file "jj")))))

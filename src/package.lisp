@@ -74,4 +74,20 @@
            #:add-mode-binding
            #:create-mode-binding
            #:*current-mode*
-           #:process-input))
+           #:process-input
+           #:buffer
+           #:buffer-lines
+           #:make-buffer
+           #:buffer-lines-count
+           #:buffer-line
+           #:buffer-append
+           #:read-file-into-buffer
+           #:invalid-text-position-error
+           #:signal-invalid-text-position-error
+           #:text-position
+           #:text-position-absolute-position
+           #:text-position-line-number
+           #:text-position-line-position
+           #:make-text-position
+           #:text-position=
+           #:jj-error))
