@@ -10,7 +10,14 @@
                                 :adjustable t
                                 :fill-pointer 0
                                 :element-type 'string
-                                :initial-element ""))))
+                                :initial-element ""))
+   (marks :accessor buffer-marks
+          :initarg :marks
+          :initform (make-array 0
+                                :adjustable t
+                                :fill-pointer 0)
+          :documentation "The list of marks for this buffer so that it knows
+          how to update them.")))
 
 (define-condition buffer-line-index-error (jj-error)
   ((line :initarg :line :reader buffer-line-index-error-line)
