@@ -20,7 +20,11 @@
           how to update them.")
    (cursor-mark :accessor buffer-cursor-mark
                 :initarg :cursor-mark
-                :documentation "The position of the cursor in this buffer.")))
+                :documentation "The position of the cursor in this buffer.")
+   (frame :accessor buffer-frame
+          :initarg frame
+          :documentation "The frame that this buffer is currently assigned
+          to.")))
 
 (define-condition buffer-line-index-error (jj-error)
   ((line :initarg :line :reader buffer-line-index-error-line)

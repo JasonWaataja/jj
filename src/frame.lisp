@@ -23,12 +23,12 @@
            :initarg :buffer
            :initform nil
            :documentation "The buffer the BUFFER-FRAME refers to.")
-   (row :reader buffer-frame-row
+   (row :accessor buffer-frame-row
         :initarg :row
         :initform 0
         :type integer
         :documentation "The starting row.")
-   (column :reader buffer-frame-column
+   (column :accessor buffer-frame-column
            :initarg :column
            :initform 0
            :type integer
@@ -204,3 +204,47 @@ horizontal."
   (if (eql (composite-frame-orientation frame) :horizontal)
       (frame-columns frame)
       (frame-rows frame)))
+
+(defun scroll-buffer-frame (frame &optional (count 1))
+  "Moves FRAME down by COUNT lines. COUNT can be negative."
+  (decf (buffer-frame-row frame) count))
+
+(defun center-buffer-frame (frame)
+  "Moves FRAME to be centered around its buffer's cursor."
+  (let ((line-number (text-position-line-number
+                      (text-mark-current-position
+                       (buffer-cursor-mark
+                        (buffer-frame-buffer frame))))))
+    (setf (buffer-frame-row frame)
+          (- line-number
+             (floor (frame-rows frame) 2)))))
+
+;; TODO: Maybe only retreive SCROLLOFF once for performance in this function.
+(defun autoscroll-buffer-frame (frame)
+  (let* ((buffer (buffer-frame-buffer frame))
+         (cursor-mark (buffer-cursor-mark buffer))
+         (current-position (text-mark-current-position cursor-mark))
+         (line-number (text-position-line-number current-position)))
+    (when (< (- line-number
+                (buffer-frame-row frame))
+             (get-setting 'scrolloff))
+      (let ((method (get-setting 'autoscroll-method)))
+        (cond ((eql method :maintain-scrolloff)
+               (setf (buffer-frame-row frame)
+                     (- line-number
+                        (get-setting 'scrolloff))))
+              ((eql method :center)
+               (center-buffer-frame frame))))
+      (return-from autoscroll-buffer-frame))
+    (let ((top-row (+ (buffer-frame-row frame)
+                      (frame-rows frame)
+                      -1)))
+      (when (< (- top-row line-number)
+               (get-setting 'scrolloff))
+        (let ((method (get-setting 'autoscroll-method)))
+          (cond ((eql method :maintain-scrolloff)
+                 (setf (buffer-frame-row frame)
+                       (- (+ line-number (get-setting 'scrolloff))
+                          (frame-rows frame))))
+                ((eql method :center)
+                 (center-buffer-frame frame))))))))

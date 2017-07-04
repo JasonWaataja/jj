@@ -101,3 +101,11 @@ used. If no such setting exists, then a `no-such-setting-error' is signalled."
 
 (define-setting dump-key-events nil
   "Print debug information when receiving a key event.")
+
+(define-setting scrolloff 0
+  "The amount of space between the cursor and the top and bottom of the screen
+when automatically scrolling.")
+
+(define-setting autoscroll-method :maintain-scrolloff
+  "The way the window is scrolled when it reaches SCROLLOFF. The options
+are :MAINTAIN-SCROLLOFF and :CENTER>")

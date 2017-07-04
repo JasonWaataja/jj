@@ -10,18 +10,20 @@
   (setf *current-mode* *normal-mode*))
 
 (defun move-down-cursor (&optional (buffer *current-buffer*))
-  (let ((mark (buffer-cursor-mark buffer)))
+  (let* ((mark (buffer-cursor-mark buffer)))
     (move-mark mark
-               (text-position-move-line (text-mark-current-position mark)))))
+               (text-position-move-line (text-mark-current-position mark))))
+  (autoscroll-buffer-frame (buffer-frame buffer)))
 
 (defun move-up-cursor (&optional (buffer *current-buffer*))
   (let ((mark (buffer-cursor-mark buffer)))
     (move-mark mark
                (text-position-move-line (text-mark-current-position mark)
-                                        -1))))
+                                        -1)))
+  (autoscroll-buffer-frame (buffer-frame buffer)))
 
 (defun enable-default-bindings ()
   (bind-keys "i" #'enter-insert-mode :mode *normal-mode*)
   (bind-keys "j" #'move-down-cursor :mode *normal-mode*)
   (bind-keys "k" #'move-up-cursor :mode *normal-mode*)
-  (bind-keys "<cr>" #'enter-normal-mode :mode *insert-mode*))
+  (bind-keys "<esc>" #'enter-normal-mode :mode *insert-mode*))

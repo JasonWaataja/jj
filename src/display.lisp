@@ -29,8 +29,16 @@
 (defgeneric read-from-display (display row column)
   (:documentation "Reads the character at ROW and COLUMN in DISPLAY and returns it."))
 
+(defgeneric clear-display (display)
+  (:documentation "Clears whatever buffer the display is writing to, mainly for
+  ncurses. Make this method do nothing if it is not needed."))
+
+(defmethod clear-display (display))
+
 (defgeneric refresh-display (display)
   (:documentation "Makes sure all changes have been written, primarily for curses."))
+
+(defmethod refresh-display (display))
 
 (defun set-display-character (display char)
   "Sets each element of DISPLAY to CHAR."
@@ -105,6 +113,9 @@
   (charms/ll:attron charms/ll:a_standout)
   (charms/ll:mvwaddch (charms-display-window display) row column (char-code character))
   (charms/ll:attroff charms/ll:a_standout))
+
+(defmethod clear-display ((display charms-display))
+  (charms/ll:wclear (charms-display-window display)))
 
 (defmethod read-from-display ((display charms-display) row column)
   (multiple-value-bind (y x)

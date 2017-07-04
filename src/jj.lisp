@@ -26,6 +26,7 @@ about the control or alt keys."
            (default-frame (make-buffer-frame
                            :buffer *current-buffer*
                            :display main-display)))
+      (setf (buffer-frame *current-buffer*) default-frame)
       (setf *current-mode* *normal-mode*)
       ;; Use this restart in case MAIN is run multiple times within one Lisp
       ;; instance.
@@ -40,8 +41,11 @@ about the control or alt keys."
          for input-chord = (ncurses-input-to-chord ch)
          do
            (when (get-setting 'dump-key-events)
-             (format t "Received input: ~a~%" input-chord))
+             (format t "Received ncurses key ~a, equivalent to ~a~%"
+                     ch
+                     input-chord))
            (update-time)
+           (clear-display main-display)
            (process-input input-chord)
            (update-frame default-frame)
            (refresh-display main-display))
