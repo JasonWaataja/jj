@@ -131,14 +131,7 @@ check for following sequences, the caller should do that."
 
 (defclass insert-mode (mode) ())
 
-(defmethod process-key ((mode insert-mode) chord))
-
 (defclass normal-mode (mode) ())
-
-(defmethod process-key ((mode normal-mode) chord))
-
-(defparameter *current-mode* (make-instance 'normal-mode)
-  "The current mode that the editor is in.")
 
 (defun fill-remaining-bindings (chord)
   "Called from PROCESS-INPUT to start filling the remaining bindings based on
@@ -238,6 +231,10 @@ mode."
          ;; TODO: Add nicer printing for the whole program in general.
          :text (format nil "Overriding ~a with ~a" old-binding new-binding)))
 
+(define-restart use-new-binding)
+
+(define-restart keep-old-binding)
+
 ;;; These functions are probably what the use is going to use inf configuration for modes.
 (defun bind-keys (activation-sequence action &key
                                                (follow-sequences nil)
@@ -261,3 +258,20 @@ it may signal an `override-binding-error`. Returns NIL if NIL is passed."
               (keep-old-binding () (return-from bind-keys)))
             (return-from bind-keys))))
     (add-mode-binding mode binding)))
+
+(defparameter *normal-mode* (make-instance 'normal-mode))
+
+(defparameter *insert-mode* (make-instance 'insert-mode))
+
+(defparameter *current-mode* *normal-mode*
+  "The current mode that the editor is in.")
+
+(defmethod process-key ((mode normal-mode) chord))
+
+(defmethod process-key ((mode insert-mode) chord)
+  (let ((modification
+         (make-character-insertion *current-buffer*
+                                   (chord-character-code chord)
+                                   (text-mark-current-position
+                                    (buffer-cursor-mark *current-buffer*)))))
+    (apply-modification modification)))

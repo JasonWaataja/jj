@@ -52,3 +52,10 @@ SET1 is in SET2."
            :end2 (vector-push-extend value array))
   (setf (aref array index) value)
   array)
+
+(defmacro define-restart (restart-name)
+  "Defines a function with name RESTART-NAME that invokes the restart given by RESTART-NAME."
+  (alexandria:with-gensyms (condition)
+    `(defun ,restart-name (,condition)
+       (declare (ignore ,condition))
+       (invoke-restart ',restart-name))))

@@ -22,4 +22,5 @@
                          (:file "text")
                          (:file "mode")
                          (:file "frame")
+                         (:file "bindings")
                          (:file "jj")))))

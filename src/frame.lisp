@@ -55,7 +55,8 @@
                  :column column))
 
 (defgeneric update-frame (frame)
-  (:documentation "Updated the contents of FRAME."))
+  (:documentation "Updated the contents of FRAME. Also expected to update
+  FRAME's cursor position variables if necessary."))
 
 (defun calculate-tab-width (current-column &optional (tab-width (get-setting 'tab-width)))
   "Return the width that a tab would occupy if inserted at CURRENT-COLUMN. Uses
@@ -112,6 +113,7 @@ rendered and the relative column to start rendering at next."
   (loop for relative-line from 0
      for current-line = (+ relative-line (buffer-frame-row frame))
      with buffer = (buffer-frame-buffer frame)
+     with display = (frame-display frame)
      while (and (< relative-line (frame-rows frame))
                 (< current-line (buffer-lines-count buffer)))
      do
@@ -120,6 +122,15 @@ rendered and the relative column to start rendering at next."
          (loop with line = (buffer-line buffer current-line)
             while (and (< current-column (length line))
                        (< relative-column (frame-columns frame)))
+            for current-position = (make-text-position-with-line buffer
+                                                                 current-line
+                                                                 current-column)
+            for cursor-mark = (buffer-cursor-mark buffer)
+            when (text-position= current-position
+                                 (text-mark-current-position cursor-mark))
+            do
+              (setf (display-cursor-row display) relative-line)
+              (setf (display-cursor-column display) relative-column)
             do
               (let ((src-char (char line current-column)))
                 (cond ((char= src-char #\Tab)
@@ -129,12 +140,12 @@ rendered and the relative column to start rendering at next."
                           while (and (< i tab-width)
                                      (< relative-column (frame-columns frame)))
                           do
-                            (write-to-display (frame-display frame)
+                            (write-to-display display
                                               #\Space
                                               relative-line
                                               relative-column)
                             (incf relative-column)))
-                      (t (write-to-display (frame-display frame)
+                      (t (write-to-display display
                                            (char line current-column)
                                            relative-line
                                            relative-column)
@@ -193,16 +204,3 @@ horizontal."
   (if (eql (composite-frame-orientation frame) :horizontal)
       (frame-columns frame)
       (frame-rows frame)))
-
-;; (defun add-subframe (frame &key buffer autosize size proportion)
-;;   "Resizes all subframes in FRAME and adds a new one. If buffer is provided,
-;; then assign it to the COMPOSITE-FRAME-DISPLAY. If :AUTOSIZE is provided, the new
-;; frame gets it proportional size. If :SIZE is provided, then it is given that
-;; many rows/columns. If :PROPORTION is provided, then the new farme takes up that
-;; much of the frame."
-;;   (let ((current-size (loop for display in (composite-frame-subdisplays frame)
-;;                          for i from 0
-;;                          sum (frame-size frame) into size
-;;                          if (> i 0) (incf size)
-;;                          finally (return size))))
-;;     (

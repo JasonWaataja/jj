@@ -57,6 +57,7 @@
 (defun make-special-characters ()
   (let ((special-characters (make-hash-table :test #'equalp)))
     (setf (gethash "<space>" special-characters) #\Space)
+    (setf (gethash "<cr>" special-characters) #\Newline)
     special-characters))
 
 (defparameter *special-characters* (make-special-characters)

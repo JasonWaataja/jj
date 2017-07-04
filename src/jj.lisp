@@ -9,7 +9,9 @@
 about the control or alt keys."
   ;; TODO: The cl-charms source code said this wasn't quite right. Maybe fix
   ;; this or something.
-  (make-chord (code-char ch)))
+  (if (= ch 27)
+      (make-chord #\Newline)
+  (make-chord (code-char ch))))
 
 (defun main (argv)
   "Entry point for jj"
@@ -24,18 +26,14 @@ about the control or alt keys."
            (default-frame (make-buffer-frame
                            :buffer *current-buffer*
                            :display main-display)))
+      (setf *current-mode* *normal-mode*)
+      ;; Use this restart in case MAIN is run multiple times within one Lisp
+      ;; instance.
+      (handler-bind ((override-binding-error #'use-new-binding))
+        (enable-default-bindings))
       (update-frame default-frame)
       (refresh-display main-display)
       (update-time)
-      (create-mode-binding *current-mode*
-                           "b"
-                           :action (lambda () (format t "Got b~%")))
-      (create-mode-binding *current-mode*
-                           "bc"
-                           :action (lambda () (format t "Got bc~%")))
-      (create-mode-binding *current-mode*
-                           "de"
-                           :action (lambda () (format t "Got de~%")))
       (loop for ch = (charms/ll:wgetch charms-win)
          while (or (eql ch charms/ll:ERR)
                    (not (eql ch (char-code #\a))))

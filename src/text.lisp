@@ -247,6 +247,12 @@ variable name."
              :type text-position
              :documentation "Where to insert the text.")))
 
+(defun make-character-insertion (buffer character position)
+  (make-instance 'character-insertion
+                 :buffer buffer
+                 :character character
+                 :position position))
+
 (defmacro with-moved-marks-from-position ((buffer from-position distance) &body body)
   (alexandria:once-only (buffer from-position distance)
     (alexandria:with-gensyms (moved-marks
@@ -269,8 +275,8 @@ variable name."
 
 (defmethod apply-modification ((modification character-insertion))
   (let* ((buffer (text-modification-buffer modification))
-         (line (buffer-line (text-modification-buffer modification) buffer))
-         (position (character-insertion-position modification)))
+         (position (character-insertion-position modification))
+         (line (buffer-line buffer (text-position-line-number position))))
     (cond ((char= (character-insertion-character modification) #\Newline)
            (let ((first-line (subseq line 0 (text-position-line-position position)))
                  (second-line (subseq line (text-position-line-position position))))
@@ -311,13 +317,21 @@ variable name."
 (defparameter *cursor-mark* (create-text-mark *current-buffer*)
   "The position of the cursor within the buffer.")
 
-(defmacro with-attrs ((&rest attrs) &body body)
-  "Enables each attr in attrs and disables it at the end. Make sure each element
-of attrs is fine to be evaluated multiple times, may fix that in the future."
-  ;; TODO: Fix multiple evaluation.
-  `(progn
-     ,@(loop for attr in attrs
-          collect `(charms/ll:attron ,attr))
-     ,@body
-     ,@(loop for attr in attrs
-          collect `(charms/ll:attroff ,attr))))
+(defun text-position-move-line (position &optional (lines 1))
+  "Returns a position moved LINES down, which can be negative, which would move
+it up. Doesn't move before the first line or after the last line."
+  (let ((new-line-number (+ (text-position-line-number position) lines))
+        (new-line-position (text-position-line-position position))
+        (buffer (text-position-buffer position)))
+    (when (minusp new-line-number)
+      (setf new-line-number 0))
+    (when (>= new-line-number (buffer-lines-count buffer))
+      (setf new-line-number (if (zerop (buffer-lines-count buffer))
+                                       0
+                                       (1- (buffer-lines-count buffer)))))
+    (let ((line (buffer-line buffer new-line-number)))
+      (when (> new-line-position (length line))
+        (setf new-line-position (length line)))
+      (make-text-position-with-line buffer
+                                    new-line-number
+                                    new-line-position))))

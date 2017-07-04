@@ -13,7 +13,15 @@
             :initarg :columns
             :initform 0
             :type integer
-            :documentation "Amount of columns the display occupies.")))
+            :documentation "Amount of columns the display occupies.")
+   (cursor-row :accessor display-cursor-row
+               :initarg :cursor-row
+               :initform 0
+               :documentation "The screen row of the cursor.")
+   (cursor-column :accessor display-cursor-column
+                  :initarg :cursor-column
+                  :initform 0
+                  :documentation "The screen column of the cursor.")))
 
 (defgeneric write-to-display (display character row column)
   (:documentation "Writes CHARACTER to DISPLAY at ROW and COLUMN."))
@@ -106,4 +114,7 @@
       ch)))
 
 (defmethod refresh-display ((display charms-display))
+  (charms/ll:wmove (charms-display-window display)
+                   (display-cursor-row display)
+                   (display-cursor-column display))
   (charms/ll:wrefresh (charms-display-window display)))
