@@ -9,8 +9,6 @@
 about the control or alt keys."
   ;; TODO: The cl-charms source code said this wasn't quite right. Maybe fix
   ;; this or something.
-  (if (= ch 27)
-      (make-chord #\Newline)
   (make-chord (code-char ch))))
 
 (defun main (argv)
