@@ -20,10 +20,9 @@ about the control or alt keys."
   (multiple-value-bind (rows columns)
       (charms/ll:get-maxyx charms/ll:*stdscr*)
     (let* ((charms-win (charms/ll:newwin rows columns 0 0))
-           (default-buffer (make-buffer))
            (main-display (make-charms-display charms-win))
            (default-frame (make-buffer-frame
-                           :buffer default-buffer
+                           :buffer *current-buffer*
                            :display main-display)))
       (update-frame default-frame)
       (refresh-display main-display)
@@ -36,12 +35,14 @@ about the control or alt keys."
                            :action (lambda () (format t "Got bc~%")))
       (create-mode-binding *current-mode*
                            "de"
-                           :action (lambda () (format t "Got de")))
+                           :action (lambda () (format t "Got de~%")))
       (loop for ch = (charms/ll:wgetch charms-win)
          while (or (eql ch charms/ll:ERR)
                    (not (eql ch (char-code #\a))))
          for input-chord = (ncurses-input-to-chord ch)
          do
+           (when (get-setting 'dump-key-events)
+             (format t "Received input: ~a~%" input-chord))
            (update-time)
            (process-input input-chord)
            (update-frame default-frame)

@@ -6,7 +6,7 @@
   :license "MIT"
   :homepage "https://github.com/JasonWaataja/jj"
   :version "0.0.0"
-  :depends-on (#:cl-containers #:cl-charms #:cl-ppcre)
+  :depends-on (#:cl-containers #:cl-charms #:cl-ppcre #:alexandria)
   :components ((:module "src"
                         :serial t
                         :components
@@ -16,10 +16,10 @@
                          (:file "settings")
                          (:file "buffer")
                          (:file "display")
-                         (:file "frame")
                          (:file "time")
                          (:file "input")
                          (:file "event")
                          (:file "text")
                          (:file "mode")
+                         (:file "frame")
                          (:file "jj")))))

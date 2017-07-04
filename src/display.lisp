@@ -94,7 +94,9 @@
                    :columns columns)))
 
 (defmethod write-to-display ((display charms-display) character row column)
-  (charms/ll:mvwaddch (charms-display-window display) row column (char-code character)))
+  (charms/ll:attron charms/ll:a_standout)
+  (charms/ll:mvwaddch (charms-display-window display) row column (char-code character))
+  (charms/ll:attroff charms/ll:a_standout))
 
 (defmethod read-from-display ((display charms-display) row column)
   (multiple-value-bind (y x)

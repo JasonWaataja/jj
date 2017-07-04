@@ -44,3 +44,11 @@ SET1 is in SET2."
                              (lambda (,var)
                                ,@body))
           ,result))
+
+(defun array-insert-at (array value index)
+  "Inserts ELEMENT in ARRAY at INDEX."
+  (replace array array :start2 index
+           :start1 (1+ index)
+           :end2 (vector-push-extend value array))
+  (setf (aref array index) value)
+  array)

@@ -17,7 +17,10 @@
                                 :adjustable t
                                 :fill-pointer 0)
           :documentation "The list of marks for this buffer so that it knows
-          how to update them.")))
+          how to update them.")
+   (cursor-mark :accessor buffer-cursor-mark
+                :initarg :cursor-mark
+                :documentation "The position of the cursor in this buffer.")))
 
 (define-condition buffer-line-index-error (jj-error)
   ((line :initarg :line :reader buffer-line-index-error-line)

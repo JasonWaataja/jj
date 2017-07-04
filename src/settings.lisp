@@ -66,7 +66,7 @@ finding functions."
       (setf (item-at (settings-layer-settings layer) setting-name) setting-value)
       (setf (item-at (settings-layer-settings *global-settings*) setting-name) setting-value)))
 
-(defun get-setting (setting-name &optional layers)
+(defun get-setting (setting-name &optional (layers *global-settings*))
   "If LAYERS is a list, then iterate through it, returning the first value of a
 `setting' matching SETTING-NAME. Otherwise, treat LAYERS as a single layer and
 get the setting from it. If no matching setting is found, then the default is

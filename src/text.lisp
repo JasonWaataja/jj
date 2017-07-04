@@ -29,7 +29,7 @@
   ((buffer :reader buffer :initarg :buffer)
    (absolute-position :reader absolute-position :initarg :absolute-position)))
 
-(define-condtiion invalid-text-operation-error (error)
+(define-condition invalid-text-operation-error (error)
   ())
 
 (defun signal-invalid-text-operation-error (text)
@@ -48,26 +48,17 @@
   "Makes a position in BUFFER at ABSOLUTE-POSITION."
   (when (minusp absolute-position)
     (signal-invalid-text-position-error buffer absolute-position))
+  (when (zerop (buffer-lines-count buffer))
+    (return-from make-text-position (make-instance 'text-position
+                                                   :buffer buffer)))
   (loop for current-line from 0
      with current-position = 0
-     for on-last-line = (= current-line (1- (buffer-lines-count buffer)))
-     ;; Checks if it's on the last line of the buffer. If it's not, then there's
-     ;; a newline at the end of the line.
      while (and (< current-line (buffer-lines-count buffer))
-                (< (1- (+ current-position
-                          (+ (length (buffer-line buffer current-line))
-                             (if on-last-line
-                                 0
-                                 1))))
+                (< (+ current-position
+                      (length (buffer-line buffer current-line)))
                    absolute-position))
      do
-       (format t "Current line: ~a~%Current position: ~a~%"
-               current-line
-               current-position)
-       (incf current-position (+ (length (buffer-line buffer current-line))
-                                 (if on-last-line
-                                     0
-                                     1)))
+       (incf current-position (1+ (length (buffer-line buffer current-line))))
      finally
        (when (>= current-line (buffer-lines-count buffer))
          (signal-invalid-text-position-error buffer absolute-position))
@@ -76,6 +67,38 @@
                               :line-number current-line
                               :line-position (- absolute-position current-position)
                               :buffer buffer))))
+
+(defun make-text-position-with-line (buffer &optional (line-number 0) (line-position 0))
+  "Creates a `text-position' with the given LINE-NUMBER and LINE-POSITION."
+  (loop
+     initially
+       (when (zerop (buffer-lines-count buffer))
+         (if (and (zerop line-number) (zerop line-position))
+             (make-instance 'text-position
+                            :buffer buffer
+                            :absolute-position 0
+                            :line-number line-number
+                            :line-position line-number)))
+       ;; TODO: Make it so that this error is correct. The error only deals in
+       ;; absolute positions right now, not line numbers.
+       (when (>= line-number (buffer-lines-count buffer))
+         (signal-invalid-text-position-error buffer 0))
+     for current-line from 0
+     with current-position = 0
+     while (< current-line line-number)
+     do
+       (incf current-position (1+ (length (buffer-line buffer current-line))))
+     finally
+       (let ((line (buffer-line buffer line-number)))
+       (when (> line-position (length line))
+         ;; TODO: See above in this function.
+         (signal-invalid-text-position-error buffer 0))
+       (return (make-instance 'text-position
+                              :buffer buffer
+                              :absolute-position (+ current-position
+                                                    line-position)
+                              :line-number line-number
+                              :line-position line-position)))))
 
 (defun text-position= (position1 position2)
   (= (text-position-absolute-position position1)
@@ -88,6 +111,14 @@
 (defun text-position> (position1 position2)
   (> (text-position-absolute-position position1)
      (text-position-absolute-position position2)))
+
+(defun text-position<= (position1 position2)
+  (<= (text-position-absolute-position position1)
+      (text-position-absolute-position position2)))
+
+(defun text-position>= (position1 position2)
+  (>= (text-position-absolute-position position1)
+      (text-position-absolute-position position2)))
 
 (defun text-position-character (position)
   "Retreives the character represented by POSITION in its buffer."
@@ -151,7 +182,7 @@ variable name, not some arbitrary expression. It wouldn't make sense that way."
                       (make-text-position ,buffer-name ,position)
                       ,position)))
            (let (,@to-text-position-forms)
-             ,@body)))))))
+             ,@body))))))
 
 (defclass text-mark ()
   ((current-position :accessor text-mark-current-position
@@ -164,13 +195,20 @@ variable name, not some arbitrary expression. It wouldn't make sense that way."
            :type buffer
            :documentation "The buffer that the mark is a part of.")))
 
-(defun create-mark (buffer position)
+(defun create-text-mark (buffer &optional (position 0))
   "If POSITION may be an `integer' or `text-position'"
   (with-text-positions (buffer position)
     (let ((mark (make-instance 'text-mark
                                :current-position position
                                :buffer buffer)))
-      (vector-push-extend mark (buffer-marks buffer)))))
+      (vector-push-extend mark (buffer-marks buffer))
+      mark)))
+
+(defmethod initialize-instance :after ((buffer buffer) &key)
+  (format t "after getting run~%")
+  (let ((mark (create-text-mark buffer 0)))
+    (format t "~a~%" mark)
+    (setf (buffer-cursor-mark buffer) mark)))
 
 (defun delete-mark (mark)
   (delete mark (buffer-marks (text-mark-buffer mark))))
@@ -188,3 +226,98 @@ variable name."
                           collect `(,mark (text-mark-current-position ,mark)))))
     `(let (,@binding-forms)
        ,@body)))
+
+(defclass text-modification ()
+  ((buffer :accessor text-modification-buffer
+           :initarg :buffer
+           :type buffer
+           :documentation "The `buffer' the modifcation operates on.")))
+
+(defgeneric apply-modifiction (modification)
+  (:documentation "Perform the text modifiction pointed to by MODIFICTION. Must
+  keep all text marks up to date."))
+
+(defclass character-insertion (text-modification)
+  ((character :accessor character-insertion-character
+              :initarg :character
+              :type character
+              :documentation "The character to insert.")
+   (position :accessor character-insertion-position
+             :initarg :position
+             :type text-position
+             :documentation "Where to insert the text.")))
+
+(defmacro with-moved-marks-from-position ((buffer from-position distance) &body body)
+  (alexandria:once-only (buffer from-position distance)
+    (alexandria:with-gensyms (moved-marks
+                              new-absolute-positions
+                              mark
+                              absolute-position)
+      `(loop for ,mark in (buffer-marks ,buffer)
+          when (text-position>= (text-mark-current-position ,mark)
+                                ,from-position)
+          collect ,mark into ,moved-marks
+          and collect (+ (text-position-absolute-position (text-mark-current-position ,mark))
+                         ,distance)
+          into ,new-absolute-positions
+          finally
+            ,@body
+            (loop for ,mark in ,moved-marks
+               for ,absolute-position in ,new-absolute-positions
+               do
+                 (move-mark ,mark (make-text-position buffer ,absolute-position)))))))
+
+(defmethod apply-modification ((modification character-insertion))
+  (let* ((buffer (text-modification-buffer modification))
+         (line (buffer-line (text-modification-buffer modification) buffer))
+         (position (character-insertion-position modification)))
+    (cond ((char= (character-insertion-character modification) #\Newline)
+           (let ((first-line (subseq line 0 (text-position-line-position position)))
+                 (second-line (subseq line (text-position-line-position position))))
+             (setf (buffer-line buffer (text-position-line-number position)) first-line)
+             (array-insert-at (buffer-lines buffer)
+                              second-line
+                              (1+ (text-position-line-number position)))))
+          (t
+           (setf (buffer-line buffer (text-position-line-number position))
+                 (concatenate 'string
+                              (subseq line 0 (text-position-line-position position))
+                              (list (character-insertion-character modification))
+                              (subseq line (text-position-line-position position))))))))
+
+;; (defclass insertion-modifiction (text-modification)
+;;   ((position :accessor insertion-modifiction-position
+;;              :initarg :position
+;;              :type text-position
+;;              :documentation "Where to insert the text.")
+;;    (text :accessor insertion-modifiction-text
+;;          :initarg :text
+;;          :type string
+;;          :documentation "The text to insert.")))
+
+;; (defun make-insertion-modifiction (buffer position text)
+;;   (with-text-positions (buffer position)
+;;     (make-instance 'insertion-modifiction
+;;                    :buffer buffer
+;;                    :position position
+;;                    :text text)))
+
+;; (defgeneric apply-modifiction ((modifiction insertion-modification))
+;;   (
+
+(defparameter *current-buffer* (make-buffer)
+  "The buffer that the user is currently working with.")
+
+(defparameter *cursor-mark* (create-text-mark *current-buffer*)
+  "The position of the cursor within the buffer.")
+
+(defmacro with-attrs ((&rest attrs) &body body)
+  "Enables each attr in attrs and disables it at the end. Make sure each element
+of attrs is fine to be evaluated multiple times, may fix that in the future."
+  ;; TODO: Fix multiple evaluation.
+  `(progn
+     ,@(loop for attr in attrs
+          collect `(charms/ll:attron ,attr))
+     ,@body
+     ,@(loop for attr in attrs
+          collect `(charms/ll:attroff ,attr))))
