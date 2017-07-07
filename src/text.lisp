@@ -74,11 +74,11 @@
      initially
        (when (zerop (buffer-lines-count buffer))
          (if (and (zerop line-number) (zerop line-position))
-             (make-instance 'text-position
+             (return (make-instance 'text-position
                             :buffer buffer
                             :absolute-position 0
                             :line-number line-number
-                            :line-position line-number)))
+                            :line-position line-number))))
        ;; TODO: Make it so that this error is correct. The error only deals in
        ;; absolute positions right now, not line numbers.
        (when (>= line-number (buffer-lines-count buffer))

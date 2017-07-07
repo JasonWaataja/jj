@@ -41,12 +41,19 @@
   (array-dimension (buffer-lines buffer) 0))
 
 (defun buffer-line (buffer line-number)
-  "Unchecked access to buffer lines."
-  (aref (buffer-lines buffer) line-number))
+  "Unchecked access to buffer lines. However, does return an empty string in the
+case of no lines and attempting to access the first line."
+  (if (and (zerop (length (buffer-lines buffer)))
+           (zerop line-number))
+      ""
+      (aref (buffer-lines buffer) line-number)))
 
 (defun (setf buffer-line) (line buffer line-number)
   "Unchecked access to buffer lines."
-  (setf (aref (buffer-lines buffer) line-number) line))
+  (if (and (zerop (length (buffer-lines buffer)))
+           (zerop line-number))
+      (vector-push-extend line (buffer-lines buffer))
+      (setf (aref (buffer-lines buffer) line-number) line)))
 
 (defun buffer-append (buffer line)
   "Adds LINE to the end of the list of lines in BUFFER."

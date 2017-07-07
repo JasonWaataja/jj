@@ -9,7 +9,7 @@
 about the control or alt keys."
   ;; TODO: The cl-charms source code said this wasn't quite right. Maybe fix
   ;; this or something.
-  (make-chord (code-char ch))))
+  (make-chord (code-char ch)))
 
 (defun main (argv)
   "Entry point for jj"
