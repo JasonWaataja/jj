@@ -52,6 +52,17 @@
                                                (text-position-line-number current-position)
                                                new-line-position)))))
 
+(defmethod process-key ((mode normal-mode) chord))
+
+(defmethod process-key ((mode insert-mode) chord)
+  (let ((modification
+         (make-character-insertion *current-buffer*
+                                   (chord-character-code chord)
+                                   (text-mark-current-position
+                                    (buffer-cursor-mark *current-buffer*)))))
+    (apply-modification modification)
+    (move-cursor-forward)))
+
 (defun enable-default-bindings ()
   (bind-keys "i" #'enter-insert-mode :mode *normal-mode*)
   (bind-keys "j" #'move-cursor-down :mode *normal-mode*)

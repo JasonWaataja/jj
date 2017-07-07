@@ -21,9 +21,11 @@ about the control or alt keys."
       (charms/ll:get-maxyx charms/ll:*stdscr*)
     (let* ((charms-win (charms/ll:newwin rows columns 0 0))
            (main-display (make-charms-display charms-win))
+           (fresh-buffer (make-buffer))
            (default-frame (make-buffer-frame
-                           :buffer *current-buffer*
+                           :buffer fresh-buffer
                            :display main-display)))
+      (setf *current-buffer* fresh-buffer)
       (setf (buffer-frame *current-buffer*) default-frame)
       (setf *current-mode* *normal-mode*)
       ;; Use this restart in case MAIN is run multiple times within one Lisp

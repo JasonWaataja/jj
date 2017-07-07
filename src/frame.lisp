@@ -116,21 +116,22 @@ rendered and the relative column to start rendering at next."
      with display = (frame-display frame)
      while (and (< relative-line (frame-rows frame))
                 (< current-line (buffer-lines-count buffer)))
+     for line = (buffer-line buffer current-line)
+     with cursor-mark = (buffer-cursor-mark buffer)
+     with cursor-position = (text-mark-current-position cursor-mark)
      do
        (multiple-value-bind (current-column relative-column)
            (render-leading-if-needed (buffer-line buffer current-line) frame relative-line)
-         (loop with line = (buffer-line buffer current-line)
-            while (and (< current-column (length line))
+         (loop while (and (< current-column (length line))
                        (< relative-column (frame-columns frame)))
             for current-position = (make-text-position-with-line buffer
                                                                  current-line
                                                                  current-column)
-            for cursor-mark = (buffer-cursor-mark buffer)
             when (text-position= current-position
-                                 (text-mark-current-position cursor-mark))
+                                 cursor-position)
             do
-              (setf (display-cursor-row display) relative-line)
-              (setf (display-cursor-column display) relative-column)
+              (setf (display-cursor-row display) relative-line
+                    (display-cursor-column display) relative-column)
             do
               (let ((src-char (char line current-column)))
                 (cond ((char= src-char #\Tab)
@@ -150,7 +151,14 @@ rendered and the relative column to start rendering at next."
                                            relative-line
                                            relative-column)
                          (incf relative-column))))
-              (incf current-column)))))
+              (incf current-column)
+              finally
+       (when (and (= current-line
+                     (text-position-line-number cursor-position))
+                  (= (length line)
+                     (text-position-line-position cursor-position)))
+         (setf (display-cursor-row display) relative-line
+               (display-cursor-column display) (length line)))))))
 
 (defun update-frame-test ()
   (let* ((disp (make-dummy-display 4 12))
