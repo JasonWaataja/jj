@@ -265,13 +265,3 @@ it may signal an `override-binding-error`. Returns NIL if NIL is passed."
 
 (defparameter *current-mode* *normal-mode*
   "The current mode that the editor is in.")
-
-(defmethod process-key ((mode normal-mode) chord))
-
-(defmethod process-key ((mode insert-mode) chord)
-  (let ((modification
-         (make-character-insertion *current-buffer*
-                                   (chord-character-code chord)
-                                   (text-mark-current-position
-                                    (buffer-cursor-mark *current-buffer*)))))
-    (apply-modification modification)))
