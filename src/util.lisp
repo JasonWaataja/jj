@@ -49,12 +49,11 @@ SET1 is in SET2."
   "Inserts ELEMENT in ARRAY at INDEX destructively modifying array and returning
 the result. Usually, SEFT ARRAY to the return value of this function."
   (vector-push-extend value array)
-  (replace array array
-           :start1 (1+ index)
-           :start2 index
-           :end2 (1- (length array)))
-  (setf (aref array index) value)
-  array)
+  (let ((new-array (replace array array
+                            :start1 (1+ index)
+                            :start2 index)))
+    (setf (aref new-array index) value)
+    new-array))
 
 (defmacro define-restart (restart-name)
   "Defines a function with name RESTART-NAME that invokes the restart given by RESTART-NAME."

@@ -38,7 +38,7 @@
                                             :initial-element default-line)))
 
 (defun buffer-lines-count (buffer)
-  (array-dimension (buffer-lines buffer) 0))
+  (length (buffer-lines buffer)))
 
 (defun buffer-line (buffer line-number)
   "Unchecked access to buffer lines. However, does return an empty string in the
