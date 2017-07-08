@@ -90,4 +90,5 @@
            #:text-position-line-position
            #:make-text-position
            #:text-position=
-           #:jj-error))
+           #:jj-error
+           #:main))

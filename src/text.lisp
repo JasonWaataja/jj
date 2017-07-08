@@ -195,7 +195,12 @@ variable name, not some arbitrary expression. It wouldn't make sense that way."
    (buffer :accessor text-mark-buffer
            :initarg :buffer
            :type buffer
-           :documentation "The buffer that the mark is a part of.")))
+           :documentation "The buffer that the mark is a part of.")
+   (gravity :accessor text-mark-gravity
+            :initarg :gravity
+            :initform :forward
+            :documentation "The direction the mark moves when a character is
+            inserted there. The possible values are :FORWARD and :BACKWARD.")))
 
 (defun create-text-mark (buffer &optional (position 0))
   "If POSITION may be an `integer' or `text-position'"
@@ -207,9 +212,7 @@ variable name, not some arbitrary expression. It wouldn't make sense that way."
       mark)))
 
 (defmethod initialize-instance :after ((buffer buffer) &key)
-  (format t "after getting run~%")
   (let ((mark (create-text-mark buffer 0)))
-    (format t "~a~%" mark)
     (setf (buffer-cursor-mark buffer) mark)))
 
 (defun delete-mark (mark)
@@ -256,17 +259,30 @@ variable name."
                  :position position))
 
 (defmacro with-moved-marks-from-position ((buffer from-position distance) &body body)
+  "For each mark in BUFFER that would be affected by a change in text that
+occured at FROM-POSITION from the beginning of BUFFER's text, move the mark
+forward by DISTANCE. This is for the convenience of making modification
+functions that can automatically move marks. Keep in mind that the gravity of a
+mark can affect whether or not it is moved. If it is :FORWARD, then the mark is
+affected if its absolute position is equal to FROM-POSITION, but will not be
+moved if the gravity is :BACKWARD."
   (alexandria:once-only (buffer from-position distance)
     (alexandria:with-gensyms (moved-marks
                               new-absolute-positions
                               mark
+                              mark-position
                               absolute-position)
       `(with-text-positions (,buffer ,from-position)
          (loop for ,mark across (buffer-marks ,buffer)
-            when (text-position>= (text-mark-current-position ,mark)
-                                  ,from-position)
+            for ,mark-position = (text-mark-current-position ,mark)
+            when (or (text-position> ,mark-position
+                                     ,from-position)
+                     (and (text-position= ,mark-position
+                                          ,from-position)
+                          (eql (text-mark-gravity ,mark)
+                               :forward)))
             collect ,mark into ,moved-marks
-            and collect (+ (text-position-absolute-position (text-mark-current-position ,mark))
+            and collect (+ (text-position-absolute-position ,mark-position)
                            ,distance)
             into ,new-absolute-positions
             finally
