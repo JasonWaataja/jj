@@ -184,7 +184,7 @@ variable name, not some arbitrary expression. It wouldn't make sense that way."
                                                           ,buffer
                                                           ,position)))))
       `(let (,@to-text-position-forms)
-         ,@body)))))
+         ,@body))))
 
 (defclass text-mark ()
   ((current-position :accessor text-mark-current-position
