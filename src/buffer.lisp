@@ -4,7 +4,7 @@
 (in-package #:jj)
 
 (defclass buffer ()
-  ((lines :reader buffer-lines
+  ((lines :accessor buffer-lines
           :initarg :lines
           :initform (make-array 0
                                 :adjustable t

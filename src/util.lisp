@@ -46,10 +46,13 @@ SET1 is in SET2."
           ,result))
 
 (defun array-insert-at (array value index)
-  "Inserts ELEMENT in ARRAY at INDEX."
-  (replace array array :start2 index
+  "Inserts ELEMENT in ARRAY at INDEX destructively modifying array and returning
+the result. Usually, SEFT ARRAY to the return value of this function."
+  (vector-push-extend value array)
+  (replace array array
            :start1 (1+ index)
-           :end2 (vector-push-extend value array))
+           :start2 index
+           :end2 (1- (length array)))
   (setf (aref array index) value)
   array)
 

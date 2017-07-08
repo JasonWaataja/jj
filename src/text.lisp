@@ -75,12 +75,12 @@
        (when (zerop (buffer-lines-count buffer))
          (if (and (zerop line-number) (zerop line-position))
              (return (make-instance 'text-position
-                            :buffer buffer
-                            :absolute-position 0
-                            :line-number line-number
-                            :line-position line-number))))
-       ;; TODO: Make it so that this error is correct. The error only deals in
-       ;; absolute positions right now, not line numbers.
+                                    :buffer buffer
+                                    :absolute-position 0
+                                    :line-number line-number
+                                    :line-position line-number))))
+     ;; TODO: Make it so that this error is correct. The error only deals in
+     ;; absolute positions right now, not line numbers.
        (when (>= line-number (buffer-lines-count buffer))
          (signal-invalid-text-position-error buffer 0))
      for current-line from 0
@@ -90,15 +90,15 @@
        (incf current-position (1+ (length (buffer-line buffer current-line))))
      finally
        (let ((line (buffer-line buffer line-number)))
-       (when (> line-position (length line))
-         ;; TODO: See above in this function.
-         (signal-invalid-text-position-error buffer 0))
-       (return (make-instance 'text-position
-                              :buffer buffer
-                              :absolute-position (+ current-position
-                                                    line-position)
-                              :line-number line-number
-                              :line-position line-position)))))
+         (when (> line-position (length line))
+           ;; TODO: See above in this function.
+           (signal-invalid-text-position-error buffer 0))
+         (return (make-instance 'text-position
+                                :buffer buffer
+                                :absolute-position (+ current-position
+                                                      line-position)
+                                :line-number line-number
+                                :line-position line-position)))))
 
 (defun text-position= (position1 position2)
   (= (text-position-absolute-position position1)
@@ -167,22 +167,24 @@ then return an empty string."
        (vector-push-extend (text-position-character current-position) result)
      finally (return result)))
 
+(defun to-text-position (buffer position)
+  "Returns POSITION if it is a `text-position'. If it is an integer, then return
+a `text-position'` with that absolute position in BUFFER."
+  (if (integerp position)
+      (make-text-position buffer position)
+      position))
+
 (defmacro with-text-positions ((buffer &rest positions) &body body)
   "For each elements of POSITIONS, if it is an `integer', convert it to a
 `text-position' before running body. Each element of POSITIONS should be a
 variable name, not some arbitrary expression. It wouldn't make sense that way."
-  (let ((to-text-position (gensym))
-        (position (gensym))
-        (buffer-name (gensym)))
+  (alexandria:once-only (buffer)
     (let ((to-text-position-forms (loop for position in positions
-                                     collect `(,position (,to-text-position ,position)))))
-      `(let ((,buffer-name ,buffer))
-         (flet ((,to-text-position (,position)
-                  (if (integerp ,position)
-                      (make-text-position ,buffer-name ,position)
-                      ,position)))
-           (let (,@to-text-position-forms)
-             ,@body))))))
+                                     collect `(,position (to-text-position
+                                                          ,buffer
+                                                          ,position)))))
+      `(let (,@to-text-position-forms)
+         ,@body)))))
 
 (defclass text-mark ()
   ((current-position :accessor text-mark-current-position
@@ -259,37 +261,42 @@ variable name."
                               new-absolute-positions
                               mark
                               absolute-position)
-      `(loop for ,mark in (buffer-marks ,buffer)
-          when (text-position>= (text-mark-current-position ,mark)
-                                ,from-position)
-          collect ,mark into ,moved-marks
-          and collect (+ (text-position-absolute-position (text-mark-current-position ,mark))
-                         ,distance)
-          into ,new-absolute-positions
-          finally
-            ,@body
-            (loop for ,mark in ,moved-marks
-               for ,absolute-position in ,new-absolute-positions
-               do
-                 (move-mark ,mark (make-text-position buffer ,absolute-position)))))))
+      `(with-text-positions (,buffer ,from-position)
+         (loop for ,mark across (buffer-marks ,buffer)
+            when (text-position>= (text-mark-current-position ,mark)
+                                  ,from-position)
+            collect ,mark into ,moved-marks
+            and collect (+ (text-position-absolute-position (text-mark-current-position ,mark))
+                           ,distance)
+            into ,new-absolute-positions
+            finally
+              ,@body
+              (loop for ,mark in ,moved-marks
+                 for ,absolute-position in ,new-absolute-positions
+                 do
+                   (move-mark ,mark (make-text-position buffer ,absolute-position))))))))
 
 (defmethod apply-modification ((modification character-insertion))
   (let* ((buffer (text-modification-buffer modification))
          (position (character-insertion-position modification))
          (line (buffer-line buffer (text-position-line-number position))))
-    (cond ((char= (character-insertion-character modification) #\Newline)
-           (let ((first-line (subseq line 0 (text-position-line-position position)))
-                 (second-line (subseq line (text-position-line-position position))))
-             (setf (buffer-line buffer (text-position-line-number position)) first-line)
-             (array-insert-at (buffer-lines buffer)
-                              second-line
-                              (1+ (text-position-line-number position)))))
-          (t
-           (setf (buffer-line buffer (text-position-line-number position))
-                 (concatenate 'string
-                              (subseq line 0 (text-position-line-position position))
-                              (list (character-insertion-character modification))
-                              (subseq line (text-position-line-position position))))))))
+    (with-moved-marks-from-position (buffer
+                                     (text-position-absolute-position position)
+                                     1)
+      (cond ((char= (character-insertion-character modification) #\Newline)
+             (let ((first-line (subseq line 0 (text-position-line-position position)))
+                   (second-line (subseq line (text-position-line-position position))))
+               (setf (buffer-line buffer (text-position-line-number position)) first-line)
+               (setf (buffer-lines buffer)
+                     (array-insert-at (buffer-lines buffer)
+                                      second-line
+                                      (1+ (text-position-line-number position))))))
+            (t
+             (setf (buffer-line buffer (text-position-line-number position))
+                   (concatenate 'string
+                                (subseq line 0 (text-position-line-position position))
+                                (list (character-insertion-character modification))
+                                (subseq line (text-position-line-position position)))))))))
 
 ;; (defclass insertion-modifiction (text-modification)
 ;;   ((position :accessor insertion-modifiction-position

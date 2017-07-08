@@ -123,7 +123,7 @@ rendered and the relative column to start rendering at next."
        (multiple-value-bind (current-column relative-column)
            (render-leading-if-needed (buffer-line buffer current-line) frame relative-line)
          (loop while (and (< current-column (length line))
-                       (< relative-column (frame-columns frame)))
+                          (< relative-column (frame-columns frame)))
             for current-position = (make-text-position-with-line buffer
                                                                  current-line
                                                                  current-column)
@@ -152,7 +152,7 @@ rendered and the relative column to start rendering at next."
                                            relative-column)
                          (incf relative-column))))
               (incf current-column)
-              finally
+            finally
        (when (and (= current-line
                      (text-position-line-number cursor-position))
                   (= (length line)

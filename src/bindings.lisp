@@ -60,8 +60,7 @@
                                    (chord-character-code chord)
                                    (text-mark-current-position
                                     (buffer-cursor-mark *current-buffer*)))))
-    (apply-modification modification)
-    (move-cursor-forward)))
+    (apply-modification modification)))
 
 (defun enable-default-bindings ()
   (bind-keys "i" #'enter-insert-mode :mode *normal-mode*)
