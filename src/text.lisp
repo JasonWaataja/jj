@@ -154,6 +154,21 @@ be negative."
   (- (text-position-absolute-position position1)
      (text-position-absolute-position position2)))
 
+(defun buffer-first-position (buffer)
+  "Returns the position of the first character in BUFFER."
+  (make-text-position buffer 0))
+
+(defun buffer-last-position (buffer)
+  "Returns the position of the last character in BUFFER."
+  (let ((line-count (buffer-lines-count buffer)))
+    (cond ((zerop line-count) (make-text-position buffer 0))
+          (t
+           (let* ((last-line-index (1- line-count))
+                  (last-line (buffer-line buffer last-line-index)))
+             (make-text-position-with-line buffer
+                                           last-line-index
+                                           (length last-line)))))))
+
 ;; TODO: Optimize this.
 (defun text-position-get-string (start-position end-position)
   "Returns the `string' that would begin at START-POSITION and end on the
@@ -258,15 +273,17 @@ variable name."
                  :character character
                  :position position))
 
-(defmacro with-moved-marks-from-position ((buffer from-position distance) &body body)
+(defmacro with-moved-marks-from-position ((buffer from-position distance
+                                                  &key (obey-gravity t))
+                                          &body body)
   "For each mark in BUFFER that would be affected by a change in text that
 occured at FROM-POSITION from the beginning of BUFFER's text, move the mark
 forward by DISTANCE. This is for the convenience of making modification
-functions that can automatically move marks. Keep in mind that the gravity of a
-mark can affect whether or not it is moved. If it is :FORWARD, then the mark is
-affected if its absolute position is equal to FROM-POSITION, but will not be
-moved if the gravity is :BACKWARD."
-  (alexandria:once-only (buffer from-position distance)
+functions that can automatically move marks. When OBEY-GRAVITY is true the
+gravity of a mark will affect whether or not it is moved. If it is :FORWARD,
+then the mark is affected if its absolute position is equal to FROM-POSITION,
+but will not be moved if the gravity is :BACKWARD."
+  (alexandria:once-only (buffer from-position distance obey-gravity)
     (alexandria:with-gensyms (moved-marks
                               new-absolute-positions
                               mark
@@ -279,8 +296,9 @@ moved if the gravity is :BACKWARD."
                                      ,from-position)
                      (and (text-position= ,mark-position
                                           ,from-position)
-                          (eql (text-mark-gravity ,mark)
-                               :forward)))
+                          (or (not ,obey-gravity)
+                              (eql (text-mark-gravity ,mark)
+                                   :forward))))
             collect ,mark into ,moved-marks
             and collect (+ (text-position-absolute-position ,mark-position)
                            ,distance)
@@ -313,6 +331,40 @@ moved if the gravity is :BACKWARD."
                                 (subseq line 0 (text-position-line-position position))
                                 (list (character-insertion-character modification))
                                 (subseq line (text-position-line-position position)))))))))
+
+(defclass character-deletion (text-modification)
+  ((position :accessor character-deletion-position
+             :initarg :position
+             :type text-position
+             :documentation "The position of the character to delete.")))
+
+(defun make-character-deletion (buffer position)
+  (make-instance 'character-deletion
+                 :buffer buffer
+                 :position position))
+
+(defmethod apply-modification ((modification character-deletion))
+  (let* ((buffer (text-modification-buffer modification))
+         (position (character-deletion-position modification))
+         (line-number (text-position-line-number position))
+         (line (buffer-line buffer line-number)))
+    (unless (text-position= position (buffer-last-position buffer))
+      (with-moved-marks-from-position (buffer
+                                       (text-position-forward position)
+                                       -1)
+        (if (= (text-position-line-position position) (length line))
+            (let ((new-line (concatenate 'string
+                                         line
+                                         (buffer-line buffer (1+ line-number)))))
+              ;; TODO: Turn this into one SETF statement with CONCATENATE.
+              (setf (buffer-lines buffer)
+                    (array-delete-at (buffer-lines buffer) (1+ line-number)))
+              (setf (aref (buffer-lines buffer) line-number)
+                    new-line))
+            (setf (buffer-line buffer line-number)
+                  (concatenate 'string
+                               (subseq line 0 (text-position-line-position position))
+                               (subseq line (1+ (text-position-line-position position))))))))))
 
 ;; (defclass insertion-modifiction (text-modification)
 ;;   ((position :accessor insertion-modifiction-position

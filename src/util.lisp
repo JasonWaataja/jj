@@ -55,6 +55,20 @@ the result. Usually, SEFT ARRAY to the return value of this function."
     (setf (aref new-array index) value)
     new-array))
 
+(defun array-delete-at (array index)
+  "Deletes element at INDEX in ARRAY destructively and returns it. To do this,
+one part is to move the fill pointer. I think this means that the last element
+will still be in the array, and not garbage collected. This might be a bug or
+something."
+  ;; TODO: Figure out a better way to do this that doesn't just involve the
+  ;; fill-pointer.
+  (replace array array
+           :start1 index
+           :end1 (1- (length array))
+           :start2 (1+ index))
+  (setf (fill-pointer array) (1- (length array)))
+  array)
+
 (defmacro define-restart (restart-name)
   "Defines a function with name RESTART-NAME that invokes the restart given by RESTART-NAME."
   (alexandria:with-gensyms (condition)

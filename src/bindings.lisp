@@ -55,12 +55,21 @@
 (defmethod process-key ((mode normal-mode) chord))
 
 (defmethod process-key ((mode insert-mode) chord)
-  (let ((modification
-         (make-character-insertion *current-buffer*
-                                   (chord-character-code chord)
-                                   (text-mark-current-position
-                                    (buffer-cursor-mark *current-buffer*)))))
-    (apply-modification modification)))
+  (let ((cursor-position (text-mark-current-position
+                          (buffer-cursor-mark *current-buffer*))))
+    (cond ((or (char= (chord-character-code chord) #\Backspace)
+               (char= (chord-character-code chord) #\Rubout))
+           (unless (text-position= cursor-position
+                                   (buffer-first-position *current-buffer*))
+             (let ((modification
+                    (make-character-deletion *current-buffer*
+                                             (text-position-backwards cursor-position))))
+               (apply-modification modification))))
+          (t (let ((modification
+                    (make-character-insertion *current-buffer*
+                                              (chord-character-code chord)
+                                              cursor-position)))
+               (apply-modification modification))))))
 
 (defun enable-default-bindings ()
   (bind-keys "i" #'enter-insert-mode :mode *normal-mode*)
