@@ -3,9 +3,6 @@
 
 (in-package #:jj)
 
-(defparameter *empty-character* #\Space
-  "The character that makes no display.")
-
 (defclass frame ()
   ((display :accessor frame-display
             :initarg :display
@@ -153,12 +150,12 @@ rendered and the relative column to start rendering at next."
                          (incf relative-column))))
               (incf current-column)
             finally
-       (when (and (= current-line
-                     (text-position-line-number cursor-position))
-                  (= (length line)
-                     (text-position-line-position cursor-position)))
-         (setf (display-cursor-row display) relative-line
-               (display-cursor-column display) (length line)))))))
+              (when (and (= current-line
+                            (text-position-line-number cursor-position))
+                         (= (length line)
+                            (text-position-line-position cursor-position)))
+                (setf (display-cursor-row display) relative-line
+                      (display-cursor-column display) (length line)))))))
 
 (defun update-frame-test ()
   (let* ((disp (make-dummy-display 4 12))

@@ -3,6 +3,9 @@
 
 (in-package #:jj)
 
+(defparameter *empty-character* #\Space
+  "The character that makes no display.")
+
 (defclass display ()
   ((rows :accessor display-rows
          :initarg :rows
@@ -110,9 +113,7 @@
                    :columns columns)))
 
 (defmethod write-to-display ((display charms-display) character row column)
-  (charms/ll:attron charms/ll:a_standout)
-  (charms/ll:mvwaddch (charms-display-window display) row column (char-code character))
-  (charms/ll:attroff charms/ll:a_standout))
+  (charms/ll:mvwaddch (charms-display-window display) row column (char-code character)))
 
 (defmethod clear-display ((display charms-display))
   (charms/ll:wclear (charms-display-window display)))
@@ -129,3 +130,6 @@
                    (display-cursor-row display)
                    (display-cursor-column display))
   (charms/ll:wrefresh (charms-display-window display)))
+
+(defvar *main-display* (make-dummy-display 0 0)
+  "The root display of the program.")

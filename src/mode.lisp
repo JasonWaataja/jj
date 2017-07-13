@@ -265,3 +265,5 @@ it may signal an `override-binding-error`. Returns NIL if NIL is passed."
 
 (defparameter *current-mode* *normal-mode*
   "The current mode that the editor is in.")
+
+(defparameter *command-buffer* (make-buffer))

@@ -30,13 +30,6 @@
   ((line :initarg :line :reader buffer-line-index-error-line)
    (buffer :initarg :buffer :reader buffer-line-index-error-buffer)))
 
-(defun make-buffer (&optional (initial-lines 0) (default-line ""))
-  (make-instance 'buffer :lines (make-array initial-lines
-                                            :adjustable t
-                                            :fill-pointer 0
-                                            :element-type 'string
-                                            :initial-element default-line)))
-
 (defun buffer-lines-count (buffer)
   (length (buffer-lines buffer)))
 
@@ -95,3 +88,37 @@ doesn't now. Call UPDATE-FRAME after calling."
       (error () (signal-unknown-file-error pathspec)))
     (unless found
       (signal-no-such-file-error pathspec))))
+
+;; TODO: Figure out the correct container for this.
+(defparameter *buffers* (make-container 'vector-container)
+  "The list of buffers for the program. Ordered by order of the last time they
+were the current buffer.")
+
+(defun make-buffer (&optional (initial-lines 0) (default-line ""))
+  (let ((buffer (make-instance 'buffer :lines (make-array initial-lines
+                                                          :adjustable t
+                                                          :fill-pointer 0
+                                                          :element-type 'string
+                                                          :initial-element default-line))))
+    (container-append *buffers* buffer)
+    buffer))
+
+(defun set-buffer (buffer)
+  "Use this function to switch buffers. Sets *CURRENT-BUFFER* to *BUFFER* and
+moves it to the front of *BUFFERS*."
+  (setf *current-buffer* buffer)
+  (delete-item *buffers* buffer)
+  (insert-item-at *buffers* buffer 0))
+
+(defun set-to-last-buffer ()
+  "Sets the current buffer to the next buffer after the most recent in *BUFFERS*
+if it exists."
+  (when (> (cl-containers:size *buffers*) 1)
+    (set-buffer (item-at *buffers* 1))))
+
+(defun clear-command-buffer ()
+  "Gets rid of everything in the command buffer."
+  ;; TODO: Do this with actual `modification's after I write a deletion one.
+  ;; TODO: Also, maybe do this without just moving the fill pointer for garbage
+  ;; collction.
+  (setf (fill-pointer (buffer-lines *command-buffer*)) 0))

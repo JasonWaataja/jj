@@ -386,8 +386,9 @@ but will not be moved if the gravity is :BACKWARD."
 ;; (defgeneric apply-modifiction ((modifiction insertion-modification))
 ;;   (
 
-(defparameter *current-buffer* (make-buffer)
-  "The buffer that the user is currently working with.")
+(defvar *current-buffer* (make-buffer)
+  "The buffer that the user is currently working with. Initializied in the main
+  function.")
 
 (defparameter *cursor-mark* (create-text-mark *current-buffer*)
   "The position of the cursor within the buffer.")
