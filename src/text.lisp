@@ -169,6 +169,11 @@ be negative."
                                            last-line-index
                                            (length last-line)))))))
 
+(defun buffer-length (buffer)
+  "Returns the number of characters in BUFFER including newlines."
+  (- (text-position-absolute-position (buffer-last-position buffer))
+     (text-position-absolute-position (buffer-first-position buffer))))
+
 ;; TODO: Optimize this.
 (defun text-position-get-string (start-position end-position)
   "Returns the `string' that would begin at START-POSITION and end on the
@@ -200,6 +205,15 @@ variable name, not some arbitrary expression. It wouldn't make sense that way."
                                                           ,position)))))
       `(let (,@to-text-position-forms)
          ,@body))))
+
+(defun buffer-get-text (buffer &optional
+                                 (start (buffer-first-position buffer))
+                                 (end (buffer-last-position buffer)))
+  "Returns the text in BUFFER bounded by START and END which may be either
+`text-position's or `integer's. Passing no arguments gives the whole text of
+BUFFER."
+  (with-text-positions (buffer start end)
+    (text-position-get-string start end)))
 
 (defclass text-mark ()
   ((current-position :accessor text-mark-current-position
@@ -366,25 +380,65 @@ but will not be moved if the gravity is :BACKWARD."
                                (subseq line 0 (text-position-line-position position))
                                (subseq line (1+ (text-position-line-position position))))))))))
 
-;; (defclass insertion-modifiction (text-modification)
-;;   ((position :accessor insertion-modifiction-position
-;;              :initarg :position
-;;              :type text-position
-;;              :documentation "Where to insert the text.")
-;;    (text :accessor insertion-modifiction-text
-;;          :initarg :text
-;;          :type string
-;;          :documentation "The text to insert.")))
+(defclass text-insertion (text-modification)
+  ((position :accessor text-insertion-position
+             :initarg :position
+             :type text-position
+             :documentation "The position to insert the text at.")
+   (text :accessor text-insertion-text
+         :initarg :text
+         :initform ""
+         :type string
+         :documentation "The string to insert.")))
 
-;; (defun make-insertion-modifiction (buffer position text)
-;;   (with-text-positions (buffer position)
-;;     (make-instance 'insertion-modifiction
-;;                    :buffer buffer
-;;                    :position position
-;;                    :text text)))
+(defun make-text-insertion (buffer text position)
+  (make-instance 'text-insertion
+                 :buffer buffer
+                 :position position
+                 :text text))
 
-;; (defgeneric apply-modifiction ((modifiction insertion-modification))
-;;   (
+(defmethod apply-modification ((modification text-insertion))
+  (loop with text = (text-insertion-text modification)
+     for character across text
+     with start-position = (text-insertion-position modification)
+     for absolute-position from (text-position-absolute-position start-position)
+     for position = (make-text-position buffer absolute-position)
+     with buffer = (text-modification-buffer modification)
+     for insertion = (make-character-insertion buffer character position)
+     do
+       (apply-modification insertion)))
+
+(defclass text-deletion (text-modification)
+  ((start :accessor text-deletion-start
+          :initarg :start
+          :initform 0
+          :type text-position
+          :documentation "The position to start deletion from.")
+   (end :accessor text-deletion-end
+        :initarg :end
+        :initform 0
+        :type text-position
+        :documentation "The position to stop deleting before.")))
+
+(defun make-text-deletion (buffer start end)
+  (make-instance 'text-deletion
+                 :buffer buffer
+                 :start start
+                 :end end))
+
+(defmethod apply-modification ((modification text-deletion))
+  (loop with buffer = (text-modification-buffer modification)
+     with start = (text-deletion-start modification)
+     with end = (text-deletion-end modification)
+     with absolute-position = (text-position-absolute-position start)
+     with count = (- (text-position-absolute-position end)
+                     absolute-position)
+     repeat count
+     for position = (make-text-position buffer absolute-position)
+     for deletion = (make-character-deletion buffer
+                                             position)
+     do
+       (apply-modification deletion)))
 
 (defvar *current-buffer* (make-buffer)
   "The buffer that the user is currently working with. Initializied in the main
@@ -403,11 +457,24 @@ it up. Doesn't move before the first line or after the last line."
       (setf new-line-number 0))
     (when (>= new-line-number (buffer-lines-count buffer))
       (setf new-line-number (if (zerop (buffer-lines-count buffer))
-                                       0
-                                       (1- (buffer-lines-count buffer)))))
+                                0
+                                (1- (buffer-lines-count buffer)))))
     (let ((line (buffer-line buffer new-line-number)))
       (when (> new-line-position (length line))
         (setf new-line-position (length line)))
       (make-text-position-with-line buffer
                                     new-line-number
                                     new-line-position))))
+
+(defun insert-text (buffer text position)
+  "Insert TEXT at POSITION in BUFFER. POSITION may be either a `text-position'
+or `integer'."
+  (with-text-positions (buffer position)
+    (let ((modification (make-text-insertion buffer text position)))
+      (apply-modification modification))))
+
+(defun delete-text (buffer start end)
+  "Delete text starting at START and going up to but not including END. START
+and END may be either `text-position's or `integer's."
+  (with-text-positions (buffer start end)
+    (apply-modification (make-text-deletion buffer start end))))

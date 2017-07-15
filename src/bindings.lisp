@@ -16,6 +16,11 @@
                     (make-character-deletion *current-buffer*
                                              (text-position-backwards cursor-position))))
                (apply-modification modification))))
+          ((and (command-mode-p)
+                (char= (chord-character-code chord) #\Newline))
+           (let ((command (buffer-get-text *command-buffer*)))
+             (exit-command-mode)
+             (process-command command)))
           (t (let ((modification
                     (make-character-insertion *current-buffer*
                                               (chord-character-code chord)

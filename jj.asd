@@ -23,5 +23,6 @@
                          (:file "mode")
                          (:file "frame")
                          (:file "editing")
+                         (:file "commands")
                          (:file "bindings")
                          (:file "jj")))))

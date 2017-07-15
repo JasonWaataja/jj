@@ -267,3 +267,12 @@ it may signal an `override-binding-error`. Returns NIL if NIL is passed."
   "The current mode that the editor is in.")
 
 (defparameter *command-buffer* (make-buffer))
+
+(defun current-buffer-p (buffer)
+  "Tests whether BUFFER is EQL to *CURRENT-BUFFER*."
+  (eql buffer *current-buffer*))
+
+(defun command-mode-p ()
+  "Returns whether or not the user is currently manipulating the command
+buffer."
+  (current-buffer-p *command-buffer*))

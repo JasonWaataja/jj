@@ -115,10 +115,3 @@ moves it to the front of *BUFFERS*."
 if it exists."
   (when (> (cl-containers:size *buffers*) 1)
     (set-buffer (item-at *buffers* 1))))
-
-(defun clear-command-buffer ()
-  "Gets rid of everything in the command buffer."
-  ;; TODO: Do this with actual `modification's after I write a deletion one.
-  ;; TODO: Also, maybe do this without just moving the fill pointer for garbage
-  ;; collction.
-  (setf (fill-pointer (buffer-lines *command-buffer*)) 0))
