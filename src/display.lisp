@@ -43,6 +43,17 @@
 
 (defmethod refresh-display (display))
 
+(defgeneric start-highlight (display)
+  (:documentation "Highlight the next text rendered to DISPLAY until
+  END-HIGHLIGHT is called."))
+
+(defmethod start-highlight (display))
+
+(defgeneric end-highlight (display)
+  (:documentation "Stop highlighting text rendered to DISPLAY."))
+
+(defmethod end-highlight (display))
+
 (defun set-display-character (display char)
   "Sets each element of DISPLAY to CHAR."
   (dotimes (i (display-rows display))
@@ -130,6 +141,14 @@
                    (display-cursor-row display)
                    (display-cursor-column display))
   (charms/ll:wrefresh (charms-display-window display)))
+
+(defmethod start-highlight ((display charms-display))
+  (charms/ll:wattron (charms-display-window display)
+                     charms/ll:a_standout))
+
+(defmethod end-highlight ((display charms-display))
+  (charms/ll:wattroff (charms-display-window display)
+                      charms/ll:a_standout))
 
 (defvar *main-display* (make-dummy-display 0 0)
   "The root display of the program.")

@@ -261,6 +261,10 @@ variable name."
     `(let (,@binding-forms)
        ,@body)))
 
+(defun buffer-cursor-position (buffer)
+  "Returns the position of the cursor mark in BUFFER."
+  (text-mark-current-position (buffer-cursor-mark buffer)))
+
 (defclass text-modification ()
   ((buffer :accessor text-modification-buffer
            :initarg :buffer
@@ -478,3 +482,94 @@ or `integer'."
 and END may be either `text-position's or `integer's."
   (with-text-positions (buffer start end)
     (apply-modification (make-text-deletion buffer start end))))
+
+(defclass text-region ()
+  ((buffer :accessor text-region-buffer
+           :initarg :buffer
+           :type text-buffer
+           :documentation "The buffer that the region applies to.")
+   (anchor :accessor text-region-anchor
+           :initarg :anchor
+           :type text-position
+           :documentation "The anchor of the selection, may be in front or behind
+          CURSOR.")
+   (cursor :accessor text-region-cursor
+           :initarg :cursor
+           :type text-position
+           :documentation "The cursor of the selection, may be in front or behind
+        of ANCHOR. Unlike most use of iterators, this is inclusive, not
+        exclusive.")))
+
+(defun make-text-region (buffer &optional
+                                  (anchor (buffer-first-position buffer))
+                                  (cursor anchor))
+  "Creates a text region in BUFFER from ANCHOR to CURSOR which default to the
+first position of the buffer."
+  (make-instance 'text-region
+                 :buffer buffer
+                 :anchor anchor
+                 :cursor cursor))
+
+(defun text-region-get-text (region)
+  "Gets the text contained in REGION."
+  (let ((start (text-region-anchor region))
+        (end (text-region-cursor region))
+        (buffer (text-region-buffer region)))
+    (when (buffer-empty-p buffer)
+      (return-from text-region-get-text ""))
+    (when (text-position< end start)
+      (rotatef start end))
+    (buffer-get-text buffer start (text-position-forward end))))
+
+(defun text-region-move (region &key
+                                  (anchor (text-region-anchor region))
+                                  (cursor (text-region-cursor region)))
+  (setf (text-region-anchor region) anchor
+        (text-region-cursor region) cursor))
+
+(defclass text-selection ()
+  ((buffer :accessor text-selection-buffer
+           :initarg :buffer
+           :type buffer
+           :documentation "The buffer that the region is part of.")
+   (regions :accessor text-selection-regions
+            :initarg :regions
+            :initform (make-container 'vector-container)
+            :type text-region
+            :documentation "The sequence of regions that the selection
+            contains. Should contain at least one region.")))
+
+(defun make-text-selection (buffer &optional
+                                     (anchor (buffer-first-position buffer))
+                                     (cursor anchor))
+  "Makes a new text selection with one region at ANCHOR and CURSOR. These
+default to the beginning of the buffer."
+  (let ((selection (make-instance 'text-selection :buffer buffer)))
+    (container-append (text-selection-regions selection)
+                      (make-text-region buffer anchor cursor))
+    selection))
+
+(defmacro do-regions ((region selection) &body body)
+  (alexandria:once-only (selection)
+    `(do-container (,region (text-selection-regions ,selection))
+       ,@body)))
+
+(defun position-in-region-p (position region)
+  "Whether or not POSITION is contained in REGION."
+  (let ((absolute-position (text-position-absolute-position position))
+        (start (text-region-anchor region))
+        (end (text-region-cursor region)))
+    (when (text-position< end start)
+      (rotatef start end))
+    (and (>= absolute-position (text-position-absolute-position start))
+         (<= absolute-position (text-position-absolute-position end)))))
+
+(defun position-in-selection-p (position selection)
+  (do-regions (region selection)
+    (when (position-in-region-p position region)
+      (return-from position-in-selection-p t)))
+  nil)
+
+(defvar *selection* nil
+  "The text selection for the program, should be updated the main loop and may
+not always be valid.")

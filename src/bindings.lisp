@@ -29,7 +29,7 @@
 
 (defun enable-default-bindings ()
   (bind-keys "i" #'enter-insert-mode :mode *normal-mode*)
-  (bind-keys ":" #'begin-command :mode *normal-mode*)
+  (bind-keys '("<cr>" ":") #'begin-command :mode *normal-mode*)
   (bind-keys "j" #'move-cursor-down :mode *normal-mode*)
   (bind-keys "k" #'move-cursor-up :mode *normal-mode*)
   (bind-keys "l" #'move-cursor-forward :mode *normal-mode*)

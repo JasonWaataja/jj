@@ -243,21 +243,28 @@ mode."
   "Like CREATE-MODE-BINDING, but also checks if it matches any bindings. The
 possible values for IF-REBIND are :ERROR and NIL, which control what happens
 when the binding would overwrite an existing one. If the value is :ERROR, then
-it may signal an `override-binding-error`. Returns NIL if NIL is passed."
-  (let* ((binding (make-key-binding activation-sequence
-                                    :follow-sequences follow-sequences
-                                    :action action))
-         (input-seq (key-binding-activation-sequence binding)))
-    (do-container (existing-binding (mode-key-bindings mode))
-      (when (key-sequence= (key-binding-activation-sequence existing-binding)
-                           input-seq)
-        (if (eql if-rebind :error)
-            (restart-case (signal-override-binding-error existing-binding
-                                                         binding)
-              (use-new-binding ())
-              (keep-old-binding () (return-from bind-keys)))
-            (return-from bind-keys))))
-    (add-mode-binding mode binding)))
+it may signal an `override-binding-error'. Returns NIL if NIL is
+passed. ACTIVATION-SEQUENCE may be either a `string' or a list of `string's"
+  (if (listp activation-sequence)
+      (dolist (sequence activation-sequence)
+        (bind-keys sequence action
+                   :follow-sequences follow-sequences
+                   :mode mode
+                   :if-rebind if-rebind))
+      (let* ((binding (make-key-binding activation-sequence
+                                        :follow-sequences follow-sequences
+                                        :action action))
+             (input-seq (key-binding-activation-sequence binding)))
+        (do-container (existing-binding (mode-key-bindings mode))
+          (when (key-sequence= (key-binding-activation-sequence existing-binding)
+                               input-seq)
+            (if (eql if-rebind :error)
+                (restart-case (signal-override-binding-error existing-binding
+                                                             binding)
+                  (use-new-binding ())
+                  (keep-old-binding () (return-from bind-keys)))
+                (return-from bind-keys))))
+        (add-mode-binding mode binding))))
 
 (defparameter *normal-mode* (make-instance 'normal-mode))
 

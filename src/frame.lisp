@@ -129,6 +129,9 @@ rendered and the relative column to start rendering at next."
             do
               (setf (display-cursor-row display) relative-line
                     (display-cursor-column display) relative-column)
+            when (position-in-selection-p current-position *selection*)
+            do
+              (start-highlight display)
             do
               (let ((src-char (char line current-column)))
                 (cond ((char= src-char #\Tab)
@@ -149,6 +152,9 @@ rendered and the relative column to start rendering at next."
                                            relative-column)
                          (incf relative-column))))
               (incf current-column)
+            when (position-in-selection-p current-position *selection*)
+            do
+              (end-highlight display)
             finally
               (when (and (= current-line
                             (text-position-line-number cursor-position))

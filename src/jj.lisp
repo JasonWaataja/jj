@@ -11,6 +11,12 @@ about the control or alt keys."
   ;; this or something.
   (make-chord (code-char ch)))
 
+(defun update-selection ()
+  "Updates where *SELECTION* points to."
+  (setf *selection*
+        (make-text-selection *current-buffer*
+                             (buffer-cursor-position *current-buffer*))))
+
 (defun main (argv)
   "Entry point for jj"
   (declare (ignore argv))
@@ -41,6 +47,7 @@ about the control or alt keys."
       ;; instance.
       (handler-bind ((override-binding-error #'use-new-binding))
         (enable-default-bindings))
+      (update-selection)
       (update-frame default-frame)
       (update-frame command-frame)
       ;; (refresh-display main-displa)
@@ -60,6 +67,7 @@ about the control or alt keys."
            (clear-display *main-display*)
            (clear-display command-display)
            (process-input input-chord)
+           (update-selection)
            (update-frame default-frame)
            (update-frame command-frame)
          ;; This is like this because I'm not sure how to ensure which window
@@ -68,7 +76,7 @@ about the control or alt keys."
          ;; section, a hopefully temporary hack.
 
          ;; TODO: Figure out how to choose which window the cursor is on.
-           (cond ((eql *current-buffer* *command-buffer*)
+           (cond ((command-mode-p)
                   (refresh-display *main-display*)
                   (refresh-display command-display))
                  (t

@@ -103,6 +103,12 @@ were the current buffer.")
     (container-append *buffers* buffer)
     buffer))
 
+(defun buffer-empty-p (buffer)
+  "Returns if there is any text in the buffer."
+  (not (or (zerop (length (buffer-lines buffer)))
+           (and (= (length (buffer-lines buffer)) 1)
+                (string= (aref (buffer-lines buffer) 0) "")))))
+
 (defun set-buffer (buffer)
   "Use this function to switch buffers. Sets *CURRENT-BUFFER* to *BUFFER* and
 moves it to the front of *BUFFERS*."
