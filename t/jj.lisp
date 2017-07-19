@@ -129,16 +129,16 @@
   (let ((test-var 0))
     (flet ((make-test-var-setter (val)
              (lambda () (setf test-var val))))
-      (create-mode-binding *current-mode* "a"
-                           :action "b"
-                           :follow-sequences t)
-      (create-mode-binding *current-mode* "b"
-                           :action (make-test-var-setter 1))
+      (create-mode-binding-current "a"
+                                   :action "b"
+                                   :follow-sequences t)
+      (create-mode-binding-current "b"
+                                   :action (make-test-var-setter 1))
       ;; Dummy that shouldn't be activated.
-      (create-mode-binding *current-mode* "ab"
-                           :action (make-test-var-setter 2))
-      (create-mode-binding *current-mode* "cd"
-                           :action (make-test-var-setter 3))
+      (create-mode-binding-current "ab"
+                                   :action (make-test-var-setter 2))
+      (create-mode-binding-current "cd"
+                                   :action (make-test-var-setter 3))
       (clear-key-stroke-buffer *key-stroke-buffer*)
       (process-input (make-chord #\c))
       (is (= test-var 0))

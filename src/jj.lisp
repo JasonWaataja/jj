@@ -42,7 +42,7 @@ about the control or alt keys."
       (setf *command-buffer* command-buffer)
       (setf (buffer-frame *command-buffer*) command-frame)
       (setf *main-display* main-display)
-      (setf *current-mode* *normal-mode*)
+      (enter-mode 'normal-mode)
       ;; Use this restart in case MAIN is run multiple times within one Lisp
       ;; instance.
       (handler-bind ((override-binding-error #'use-new-binding))

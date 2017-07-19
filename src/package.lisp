@@ -76,6 +76,7 @@
            #:mode-key-bindings
            #:add-mode-binding
            #:create-mode-binding
+           #:create-mode-binding-current
            #:*current-mode*
            #:process-input
            #:buffer

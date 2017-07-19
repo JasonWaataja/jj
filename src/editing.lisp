@@ -4,14 +4,14 @@
 (in-package #:jj)
 
 (defun enter-insert-mode ()
-  (setf *current-mode* *insert-mode*))
+  (enter-mode 'insert-mode))
 
 (defun enter-normal-mode ()
-  (setf *current-mode* *normal-mode*))
+  (enter-mode 'normal-mode))
 
 (defun begin-command ()
   (set-buffer *command-buffer*)
-  (setf *current-mode* *insert-mode*))
+  (enter-insert-mode))
 
 (defun move-cursor-down (&optional (buffer *current-buffer*))
   (let* ((mark (buffer-cursor-mark buffer)))

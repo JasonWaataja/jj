@@ -85,23 +85,91 @@ it is assumed that ACTIVATION-SEQUENCE is a `key-sequence'."
                  :documentation "The list of key bindings. Combinations at the
                  start have priority.")))
 
-(defun add-mode-binding (mode binding)
-  "Adds BINDING to the front of the bindings for MODE."
-  (insert-item-at (mode-key-bindings mode) binding 0))
-
-(defun create-mode-binding (mode activation-sequence &key (follow-sequences nil) action)
-  "Combines ADD-MODE-BINDING and MAKE-KEY-BINDING."
-  (add-mode-binding mode
-                    (make-key-binding activation-sequence
-                                      :follow-sequences follow-sequences
-                                      :action action)))
-
 (defgeneric process-event (mode event)
   (:documentation "Process EVENT based on MODE."))
 
 (defgeneric process-key (mode chord)
   (:documentation "Take a key, which can have modifiers, hence using `chord',
   and process it based on MODE."))
+
+(defclass mode-holder ()
+  ((name :accessor mode-holder-name
+         :initarg :name
+         :documentation "The symbol for the name of the mode.")
+   (instance :accessor mode-holder-instance
+             :initarg :instance
+             :documentation "The instance of a `mode' object.")))
+
+(defparameter *modes* (make-container 'set-container)
+  "The map of mode names to instances of mode objects.")
+
+(defun get-mode-holder (name)
+  "Returns the holder for the mode with NAME that contains both the name and the
+instance."
+  (search-for-item *modes* name :key #'mode-holder-name))
+
+(defun get-mode (name)
+  "Returns the instance object with NAME."
+  (let ((item (get-mode-holder name)))
+    (when item
+      (mode-holder-instance item))))
+
+;; TODO: Add documentation way to incorporate documentation.
+(defmacro define-mode (name)
+  "Defines a new `mode' with NAME that can be accessed with 'NAME in *MODES*. To
+set the behaviour of the mode, define the mode methods for it."
+  `(progn
+     (defclass ,name (mode) ())
+     (insert-new-item *modes*
+                      (make-instance 'mode-holder
+                                     :name ',name
+                                     :instance (make-instance ',name))
+                      :test (lambda (holder1 holder2)
+                              (eql (mode-holder-name holder1)
+                                   (mode-holder-name holder2))))))
+
+(define-mode normal-mode)
+
+(define-mode insert-mode)
+
+(defparameter *current-mode-holder* (get-mode-holder 'normal-mode)
+  "The holder of the name and instance of the current mode. Only manipulate it
+  with provided functions.")
+
+(defparameter *current-mode* (mode-holder-instance *current-mode-holder*)
+  "The instance of the current mode. Only manipulate it with provided functions.")
+
+(defun current-mode-name ()
+  "Returns the name of the current mode."
+  (mode-holder-name *current-mode-holder*))
+
+(defun current-mode-p (name)
+  (eql name (mode-holder-name *current-mode-holder*)))
+
+(defun enter-mode (name)
+  "Sets the current mode to the mode with NAME."
+  (let ((holder (get-mode-holder name)))
+    (when holder
+      (setf *current-mode-holder* holder)
+      (setf *current-mode* (mode-holder-instance holder)))))
+
+(defun add-mode-binding (mode-name binding)
+  "Adds BINDING to the front of the bindings for MODE."
+  (insert-item-at (mode-key-bindings (get-mode mode-name)) binding 0))
+
+(defun create-mode-binding (mode-name activation-sequence &key (follow-sequences nil) action)
+  "Combines ADD-MODE-BINDING and MAKE-KEY-BINDING."
+  (add-mode-binding mode-name
+                    (make-key-binding activation-sequence
+                                      :follow-sequences follow-sequences
+                                      :action action)))
+
+(defun create-mode-binding-current (activation-sequence &key (follow-sequences nil) action)
+  "Like CREATE-MODE-BINDING, but creates the binding in the current mode. Mostly
+just for testing."
+  (create-mode-binding (current-mode-name) activation-sequence
+                       :follow-sequences follow-sequences
+                       :action action))
 
 (defun chord-matches-binding-p (binding chord index)
   "Checks if the character at INDEX matches the corresponding key in
@@ -128,10 +196,6 @@ check for following sequences, the caller should do that."
                      (item-at (key-stroke-buffer-chords buffer) i)))
      return nil
      finally (return t)))
-
-(defclass insert-mode (mode) ())
-
-(defclass normal-mode (mode) ())
 
 (defun fill-remaining-bindings (chord)
   "Called from PROCESS-INPUT to start filling the remaining bindings based on
@@ -238,7 +302,7 @@ mode."
 ;;; These functions are probably what the use is going to use inf configuration for modes.
 (defun bind-keys (activation-sequence action &key
                                                (follow-sequences nil)
-                                               (mode *current-mode*)
+                                               (mode-name (current-mode-name))
                                                (if-rebind :error))
   "Like CREATE-MODE-BINDING, but also checks if it matches any bindings. The
 possible values for IF-REBIND are :ERROR and NIL, which control what happens
@@ -249,13 +313,13 @@ passed. ACTIVATION-SEQUENCE may be either a `string' or a list of `string's"
       (dolist (sequence activation-sequence)
         (bind-keys sequence action
                    :follow-sequences follow-sequences
-                   :mode mode
+                   :mode-name mode-name
                    :if-rebind if-rebind))
       (let* ((binding (make-key-binding activation-sequence
                                         :follow-sequences follow-sequences
                                         :action action))
              (input-seq (key-binding-activation-sequence binding)))
-        (do-container (existing-binding (mode-key-bindings mode))
+        (do-container (existing-binding (mode-key-bindings (get-mode mode-name)))
           (when (key-sequence= (key-binding-activation-sequence existing-binding)
                                input-seq)
             (if (eql if-rebind :error)
@@ -264,16 +328,10 @@ passed. ACTIVATION-SEQUENCE may be either a `string' or a list of `string's"
                   (use-new-binding ())
                   (keep-old-binding () (return-from bind-keys)))
                 (return-from bind-keys))))
-        (add-mode-binding mode binding))))
+        (add-mode-binding mode-name binding))))
 
-(defparameter *normal-mode* (make-instance 'normal-mode))
-
-(defparameter *insert-mode* (make-instance 'insert-mode))
-
-(defparameter *current-mode* *normal-mode*
-  "The current mode that the editor is in.")
-
-(defparameter *command-buffer* (make-buffer))
+(defparameter *command-buffer* (make-buffer)
+  "The buffer for entering commands, usually at the bottom of the screen.")
 
 (defun current-buffer-p (buffer)
   "Tests whether BUFFER is EQL to *CURRENT-BUFFER*."
