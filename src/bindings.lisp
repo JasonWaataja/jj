@@ -20,7 +20,8 @@
                 (char= (chord-character-code chord) #\Newline))
            (let ((command (buffer-get-text *command-buffer*)))
              (exit-command-mode)
-             (process-command command)))
+             (process-command command)
+             (enter-normal-mode)))
           (t (let ((modification
                     (make-character-insertion *current-buffer*
                                               (chord-character-code chord)
