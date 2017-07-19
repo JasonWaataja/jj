@@ -182,3 +182,27 @@ signalled. Returns the condition if it was, NIL otherwise."
                      (make-text-position buffer 7)))))
     (is (not (null (test-condition (invalid-text-position-error)
                      (make-text-position buffer -1)))))))
+
+(define-condition dummy-condition ()
+  ((data :reader dummy-condition-data
+         :initarg :data)))
+
+(defun signal-dummy-condition (&optional data)
+  (if data
+      (signal 'dummy-condition :data data)
+      (signal 'dummy-condition)))
+
+(test command-test
+  "Test the finding and executing of commands."
+  (clear-commands)
+  (add-default-commands)
+  (is (not (null (find-command "quit"))))
+  (is (not (null (find-command "q"))))
+  (is (not (null (test-condition (no-such-command-error)
+                   (find-command "no-such-command")))))
+  (define-command (argv "no-such-command" "nsc")
+    (signal-dummy-condition))
+  (is (not (null (test-condition (dummy-condition)
+                   (process-command "no-such-command")))))
+  (is (not (null (test-condition (dummy-condition)
+                   (process-command "nsc"))))))

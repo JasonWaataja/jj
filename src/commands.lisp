@@ -65,7 +65,7 @@ body with ARGV-VAR bound to the list of arguments passed to the command."
 
 (defun signal-no-command-found-error (command-string)
   (error 'no-command-found-error
-         :text (format nil "No command found in ~a" command-string)
+         :text (format nil "No command found in \"~a\"" command-string)
          :command command-string))
 
 (defun split-command (command-string)
@@ -79,17 +79,44 @@ split."
       (signal-no-command-found-error command-string))
     (values (first parts) (rest parts))))
 
+(define-condition no-such-command-error (jj-error)
+  ((name :reader no-such-command-error-name
+         :initarg :name)))
+
+;; TODO Make a superclass of command syntax errors.
+(defun signal-no-such-command-error (name)
+  (error 'no-such-command-error
+         :text (format nil "No such command: \"~a\"" name)
+         :name name))
+
+(defun find-command (name)
+  "Finds a command that matches NAME with either its NAME or one of its
+alternative names."
+  (let ((command (search-for-match *commands*
+                    (lambda (command)
+                      (command-matches-p command name)))))
+    (unless command
+      (signal-no-such-command-error name))
+    command))
+
 (defun process-command (command-string)
   "Process the `string' command."
   (multiple-value-bind (name args)
       (handler-case (split-command command-string)
         (no-command-found-error () nil))
     (when name
-      (let ((command (search-for-match *commands*
-                                       (lambda (command)
-                                         (command-matches-p command name)))))
-        (when command
-          (funcall (command-action command) args))))))
+      (let ((command (handler-case (find-command name)
+                       (no-such-command-error () nil))))
+        (if command
+            (funcall (command-action command) args)
+            ;; TODO: Make this a real error output.
+            (format *error-output* "No such command for: \"~a\"~%" command-string))))))
 
-(define-command (argv "quit" "q")
-  (exit-clean))
+(defun clear-commands ()
+  "Gets rid of all commands."
+  (empty! *commands*))
+
+(defun add-default-commands ()
+  "Adds the base commands to *COMMANDS*."
+  (define-command (argv "quit" "q")
+    (exit-clean)))

@@ -94,4 +94,23 @@
            #:make-text-position
            #:text-position=
            #:jj-error
+           #:command
+           #:command-name
+           #:command-alt-names
+           #:command-action
+           #:*commands*
+           #:add-command
+           #:define-command
+           #:command-matches-p
+           #:no-command-found-error
+           #:no-command-found-error-command
+           #:signal-no-command-found-error
+           #:split-command
+           #:no-such-command-error
+           #:no-such-command-error-name
+           #:signal-no-such-command-error
+           #:find-command
+           #:process-command
+           #:clear-commands
+           #:add-default-commands
            #:main))

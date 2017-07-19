@@ -47,6 +47,9 @@ about the control or alt keys."
       ;; instance.
       (handler-bind ((override-binding-error #'use-new-binding))
         (enable-default-bindings))
+      ;; Just in case this is being run multiple times in one Lisp instance.
+      (clear-commands)
+      (add-default-commands)
       (setf *exit-flag* nil)
       (update-selection)
       (update-frame default-frame)
