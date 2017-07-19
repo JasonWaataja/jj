@@ -124,12 +124,14 @@ rendered and the relative column to start rendering at next."
             for current-position = (make-text-position-with-line buffer
                                                                  current-line
                                                                  current-column)
+            for on-highlight = (and (current-buffer-p buffer)
+                                    (position-in-selection-p current-position *selection*))
             when (text-position= current-position
                                  cursor-position)
             do
               (setf (display-cursor-row display) relative-line
                     (display-cursor-column display) relative-column)
-            when (position-in-selection-p current-position *selection*)
+            when on-highlight
             do
               (start-highlight display)
             do
@@ -152,7 +154,7 @@ rendered and the relative column to start rendering at next."
                                            relative-column)
                          (incf relative-column))))
               (incf current-column)
-            when (position-in-selection-p current-position *selection*)
+            when on-highlight
             do
               (end-highlight display)
             finally
