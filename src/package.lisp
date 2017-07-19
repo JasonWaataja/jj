@@ -13,6 +13,7 @@
                 #:insert-item-at
                 #:collect-items
                 #:search-for-item
+                #:search-for-match
                 #:delete-item
                 #:make-container
                 #:list-container
@@ -28,6 +29,8 @@
                 #:every-item-p
                 #:iterate-container
                 #:iterate-elements)
+  (:import-from #:split-sequence
+                #:split-sequence)
   (:export #:setting
            #:*settings*
            #:define-setting

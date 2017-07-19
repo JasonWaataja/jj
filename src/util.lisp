@@ -75,3 +75,7 @@ something."
     `(defun ,restart-name (,condition)
        (declare (ignore ,condition))
        (invoke-restart ',restart-name))))
+
+(defun as-bool (val)
+  "Returns NIL if VAL is NIL, T otherwise."
+  (if val t))

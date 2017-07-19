@@ -76,3 +76,12 @@ buffer first."
 (defun clear-command-buffer ()
   "Calls CLEAR-BUFFER on *COMMAND-BUFFER*."
   (clear-buffer *command-buffer*))
+
+(defparameter *exit-flag* nil "Variable to store if the program should exit.")
+
+(defun exit-clean ()
+  "Set the main loop to exit after the next iteration. Do any necessary cleanup
+before hand, etc."
+  ;; TODO: Add something to handle if there are multiple buffers open to resize
+  ;; windows and not close, check if files need saving, etc.
+  (setf *exit-flag* t))

@@ -35,7 +35,7 @@
   ((keys :reader key-sequence-keys
          :initarg :keys
          :initform (make-container 'vector-container)
-         :type 'vector-container
+         :type vector-container
          :documentation "The sequence of chords for the sequence.")))
 
 (defun key-sequence= (seq1 seq2)

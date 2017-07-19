@@ -47,6 +47,7 @@ about the control or alt keys."
       ;; instance.
       (handler-bind ((override-binding-error #'use-new-binding))
         (enable-default-bindings))
+      (setf *exit-flag* nil)
       (update-selection)
       (update-frame default-frame)
       (update-frame command-frame)
@@ -54,9 +55,8 @@ about the control or alt keys."
       ;; (refresh-display command-display)
       (charms/ll:refresh)
       (update-time)
-      (loop for ch = (charms/ll:wgetch charms-win)
-         while (or (eql ch charms/ll:ERR)
-                   (not (eql ch (char-code #\a))))
+      (loop while (not *exit-flag*)
+         for ch = (charms/ll:wgetch charms-win)
          for input-chord = (ncurses-input-to-chord ch)
          do
            (when (get-setting 'dump-key-events)
@@ -81,6 +81,8 @@ about the control or alt keys."
                   (refresh-display command-display))
                  (t
                   (refresh-display command-display)
-                  (refresh-display *main-display*))))
+                  (refresh-display *main-display*)))
+           (when (eql ch (char-code #\a))
+             (setf *exit-flag* t)))
       (charms/ll:delwin charms-win)
       (charms/ll:endwin))))

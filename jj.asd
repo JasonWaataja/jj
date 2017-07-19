@@ -6,7 +6,7 @@
   :license "MIT"
   :homepage "https://github.com/JasonWaataja/jj"
   :version "0.0.0"
-  :depends-on (#:cl-containers #:cl-charms #:cl-ppcre #:alexandria)
+  :depends-on (#:cl-containers #:cl-charms #:cl-ppcre #:alexandria #:split-sequence)
   :components ((:module "src"
                         :serial t
                         :components
