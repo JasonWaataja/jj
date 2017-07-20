@@ -11,6 +11,8 @@
                 #:insert-item
                 #:insert-new-item
                 #:insert-item-at
+                #:first-item
+                #:last-item
                 #:collect-items
                 #:search-for-item
                 #:search-for-match

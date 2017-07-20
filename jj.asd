@@ -22,6 +22,7 @@
                          (:file "text")
                          (:file "mode")
                          (:file "frame")
+                         (:file "selecting")
                          (:file "editing")
                          (:file "commands")
                          (:file "bindings")

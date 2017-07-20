@@ -154,6 +154,24 @@ be negative."
   (- (text-position-absolute-position position1)
      (text-position-absolute-position position2)))
 
+(defun text-position-greatest (position &rest more-positions)
+  "Returns the position that is greatest among POSITION and MORE-POSITIONS."
+  (loop with greatest = position
+     for other-position in more-positions
+     when (text-position> other-position greatest)
+     do
+       (setf greatest other-position)
+     finally (return greatest)))
+
+(defun text-position-least (position &rest more-positions)
+  "Returns the positions that is the closest to the front of the buffer."
+  (loop with least = position
+     for other-position in more-positions
+     when (text-position> other-position least)
+     do
+       (setf least other-position)
+     finally (return least)))
+
 (defun buffer-first-position (buffer)
   "Returns the position of the first character in BUFFER."
   (make-text-position buffer 0))
