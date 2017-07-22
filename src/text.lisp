@@ -187,6 +187,17 @@ be negative."
                                            last-line-index
                                            (length last-line)))))))
 
+(defun buffer-line-first-position (buffer line-number)
+  "Returns a `text-position' on line LINE-NUMBER in BUFFER that is the first on
+that line."
+  (make-text-position-with-line buffer line-number))
+
+(defun buffer-line-last-position (buffer line-number)
+  "Returns a `text-position' on line LINE-NUMBER in BUFFER that is the last on
+that line."
+  (make-text-position-with-line buffer
+                                (length (buffer-line buffer line-number))))
+
 (defun buffer-length (buffer)
   "Returns the number of characters in BUFFER including newlines."
   (- (text-position-absolute-position (buffer-last-position buffer))
@@ -289,7 +300,7 @@ variable name."
            :type buffer
            :documentation "The `buffer' the modifcation operates on.")))
 
-(defgeneric apply-modifiction (modification)
+(defgeneric apply-modification (modification)
   (:documentation "Perform the text modifiction pointed to by MODIFICTION. Must
   keep all text marks up to date."))
 
@@ -545,6 +556,12 @@ first position of the buffer."
   (setf (text-region-anchor region) anchor
         (text-region-cursor region) cursor))
 
+(defun text-region-move-to-region (region to-region)
+  "Moves REGION to select the same space as TO-REGION."
+  (text-region-move region
+                    :anchor (text-region-anchor to-region)
+                    :cursor (text-region-cursor to-region)))
+
 (defclass text-selection ()
   ((buffer :accessor text-selection-buffer
            :initarg :buffer
@@ -591,3 +608,11 @@ default to the beginning of the buffer."
 (defvar *selection* nil
   "The text selection for the program, should be updated the main loop and may
 not always be valid.")
+
+(defun reset-selection ()
+  "Sets *SELECTION* to point to point to the cursor on *CURRENT-BUFFER*."
+  (setf *selection* (make-text-selection *current-buffer*
+                                         (buffer-cursor-position *current-buffer*))))
+
+(defmethod apply-modification :after (modification)
+  (reset-selection))

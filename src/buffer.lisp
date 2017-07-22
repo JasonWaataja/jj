@@ -114,7 +114,9 @@ were the current buffer.")
 moves it to the front of *BUFFERS*."
   (setf *current-buffer* buffer)
   (delete-item *buffers* buffer)
-  (insert-item-at *buffers* buffer 0))
+  (insert-item-at *buffers* buffer 0)
+  (setf *selection* (make-text-selection buffer
+                                         (buffer-cursor-position buffer))))
 
 (defun set-to-last-buffer ()
   "Sets the current buffer to the next buffer after the most recent in *BUFFERS*

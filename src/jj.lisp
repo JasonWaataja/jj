@@ -11,12 +11,6 @@ about the control or alt keys."
   ;; this or something.
   (make-chord (code-char ch)))
 
-(defun update-selection ()
-  "Updates where *SELECTION* points to."
-  (setf *selection*
-        (make-text-selection *current-buffer*
-                             (buffer-cursor-position *current-buffer*))))
-
 (defun main (argv)
   "Entry point for jj"
   (declare (ignore argv))
@@ -42,6 +36,7 @@ about the control or alt keys."
       (setf *command-buffer* command-buffer)
       (setf (buffer-frame *command-buffer*) command-frame)
       (setf *main-display* main-display)
+      (setf *selection-mode* :extend)
       (enter-mode 'normal-mode)
       ;; Use this restart in case MAIN is run multiple times within one Lisp
       ;; instance.
@@ -51,7 +46,6 @@ about the control or alt keys."
       (clear-commands)
       (add-default-commands)
       (setf *exit-flag* nil)
-      (update-selection)
       (update-frame default-frame)
       (update-frame command-frame)
       ;; (refresh-display main-displa)
@@ -70,7 +64,6 @@ about the control or alt keys."
            (clear-display *main-display*)
            (clear-display command-display)
            (process-input input-chord)
-           (update-selection)
            (update-frame default-frame)
            (update-frame command-frame)
          ;; This is like this because I'm not sure how to ensure which window

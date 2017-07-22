@@ -17,14 +17,16 @@
   (let* ((mark (buffer-cursor-mark buffer)))
     (move-mark mark
                (text-position-move-line (text-mark-current-position mark))))
-  (autoscroll-buffer-frame (buffer-frame buffer)))
+  (autoscroll-buffer-frame (buffer-frame buffer))
+  (update-selection #'character-selector))
 
 (defun move-cursor-up (&optional (buffer *current-buffer*))
   (let ((mark (buffer-cursor-mark buffer)))
     (move-mark mark
                (text-position-move-line (text-mark-current-position mark)
                                         -1)))
-  (autoscroll-buffer-frame (buffer-frame buffer)))
+  (autoscroll-buffer-frame (buffer-frame buffer))
+  (update-selection #'character-selector))
 
 (defun move-cursor-forward (&optional (buffer *current-buffer*))
   (let* ((mark (buffer-cursor-mark buffer))
@@ -39,7 +41,8 @@
       (move-mark mark
                  (make-text-position-with-line buffer
                                                (text-position-line-number current-position)
-                                               new-line-position)))))
+                                               new-line-position))))
+  (update-selection #'character-selector))
 
 (defun move-cursor-backward (&optional (buffer *current-buffer*))
   (let* ((mark (buffer-cursor-mark buffer))
@@ -54,7 +57,8 @@
       (move-mark mark
                  (make-text-position-with-line buffer
                                                (text-position-line-number current-position)
-                                               new-line-position)))))
+                                               new-line-position))))
+  (update-selection #'character-selector))
 
 (defun exit-command-mode ()
   "Assuming the user is in the command buffer, return to the previous buffer and
