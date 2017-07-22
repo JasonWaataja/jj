@@ -196,6 +196,7 @@ that line."
   "Returns a `text-position' on line LINE-NUMBER in BUFFER that is the last on
 that line."
   (make-text-position-with-line buffer
+                                line-number
                                 (length (buffer-line buffer line-number))))
 
 (defun buffer-length (buffer)
