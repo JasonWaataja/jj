@@ -19,6 +19,9 @@ about the control or alt keys."
   (charms/ll:noecho)
   (multiple-value-bind (rows columns)
       (charms/ll:get-maxyx charms/ll:*stdscr*)
+    ;; The line height for the charm windows are done this way because using (1-
+    ;; rows) sometimes makes the command buffer non-visible I think. That should
+    ;; be tested again.
     (let* ((charms-win (charms/ll:newwin (- rows 2) columns 0 0))
            (command-win (charms/ll:newwin 1 columns (1- rows) 0))
            (main-display (make-charms-display charms-win))
@@ -31,6 +34,8 @@ about the control or alt keys."
            (command-frame (make-buffer-frame
                            :buffer command-buffer
                            :display command-display)))
+      ;; This line also updates *SELECTION*, so no code is needed to initialize
+      ;; it here.
       (set-buffer default-buffer)
       (setf (buffer-frame *current-buffer*) default-frame)
       (setf *command-buffer* command-buffer)

@@ -6,7 +6,10 @@
 (defun make-key-event (character-code)
   (make-instance 'key-event :charcter-code character-code))
 
+;; TODO: Find a better name for this.
 (defclass chord ()
+  ;; TODO: Change this to not say code and imply it's just a normal lisp
+  ;; character object.
   ((character-code :reader chord-character-code
                    :initarg :character-code
                    :type character
@@ -15,7 +18,10 @@
               :initarg :modifiers
               :initform (make-container 'set-container)
               :documentation "The list of modifier keys for the chord, can
-              include :CONTROL or :MOD.")))
+              include :CONTROL or :MOD."))
+  (:documentation "A key stroke from the user represented by a character and a
+  set of modifiers meant to containe some combination of the control and alt
+  keys."))
 
 (defun chord= (chord1 chord2)
   (and (char= (chord-character-code chord1)
@@ -36,7 +42,9 @@
          :initarg :keys
          :initform (make-container 'vector-container)
          :type vector-container
-         :documentation "The sequence of chords for the sequence.")))
+         :documentation "The sequence of chords for the sequence."))
+  (:documentation "A sequence of keys to match for a combo. Basically just an
+  ordered sequence of key strokes."))
 
 (defun key-sequence= (seq1 seq2)
   (and (= (cl-containers:size (key-sequence-keys seq1))
@@ -200,14 +208,17 @@ the order that they appeared in MATCHERS."
          :initarg :name
          :initform ""
          :type string
-         :documentation "The name of the keymap, such as colemak.")))
+         :documentation "The name of the keymap, such as colemak."))
+  (:documentation "An object that takes an input key and manipulates it some way
+  through the generic function KEYMAP-TRANSLATE."))
 
 (defgeneric keymap-translate (keymap input-character)
   (:documentation "Take input character and return the character that would be
   entered."))
 
 (defclass default-keymap (keymap)
-  ())
+  ()
+  (:documentation "A keymap that does nothing; it just takes raw input."))
 
 (defmethod keymap-translate ((keymap default-keymap) input-character)
   input-character)

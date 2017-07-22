@@ -20,7 +20,10 @@
            :initform (lambda (&rest args) args)
            :type function
            :documentation "The function to be called with the arguments as the
-           remaining arguments")))
+           remaining arguments"))
+  (:documentation "Some command that the user can activate. It has a true and
+  full name and several shorter names by which it can be called. When activated,
+  it calls its action with arguments that the user passed."))
 
 (defparameter *commands* (make-container 'vector-container)
   "The list of commands available to the program.")

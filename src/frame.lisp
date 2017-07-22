@@ -7,7 +7,10 @@
   ((display :accessor frame-display
             :initarg :display
             :initform nil
-            :documentation "The display to write to.")))
+            :documentation "The display to write to."))
+  (:documentation "An array of text that is the middle between a buffer and a
+  display. Some object, usually a buffer, figures out how to update a frame,
+  which in turn knows how to update the display somehow."))
 
 (defun frame-rows (frame)
   (display-rows (frame-display frame)))
@@ -29,7 +32,9 @@
            :initarg :column
            :initform 0
            :type integer
-           :documentation "The starting column.")))
+           :documentation "The starting column."))
+  (:documentation "A frame that holds a buffer. This should be the most common
+  type of frame."))
 
 (define-condition invalid-frame-value (jj-error)
   ((rows :initarg :rows :reader invalid-buffer-frame-value-rows)
@@ -190,13 +195,19 @@ rendered and the relative column to start rendering at next."
                 :initform :horizontal
                 :documentation "The direction new frames are opened
                 in. :HORIZONTAL means a vertial split and :VERTICAL means a
-                horizontal split.")))
+                horizontal split."))
+  (:documentation "A frame that holds more than one subframe and displays them
+  all in some way."))
 
 (defclass composite-frame-display (display)
   ((parent :accessor composite-frame-display-parent
            :initarg :parent
            :initform nil
-           :documentation "The composite frame that it renders to.")))
+           :documentation "The composite frame that it renders to."))
+  (:documentation "A display that represents one part of a
+  `composite-frame'. Writing to this display writes to its parent's display, and
+  a frame would be able to write to this display as if it were a normal
+  display."))
 
 (defun make-composite-frame-display (parent size)
   "Make a COMPOSITE-FRAME-DISPLAY with PARENT and SIZE tall if vertial, SIZE

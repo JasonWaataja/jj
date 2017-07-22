@@ -19,7 +19,13 @@
                        :initarg :remaining-bindings
                        :initform (make-container 'vector-container)
                        :type 'vector-container
-                       :documentation "The bindings to check on next key press.")))
+                       :documentation "The bindings to check on next key press."))
+  (:documentation "A list of key strokes that the user has input recently. It
+  builds up until a key combo is activated. Within the program, after a certain
+  amount of time has passed, the key stroke buffer is cleared and all the keys
+  processed normally. When a key could not possibly make the buffer match any
+  combos, it passes through the buffer and all key strokes in it already are
+  processed as well."))
 
 (defun make-key-stroke-buffer ()
   (make-instance 'key-stroke-buffer))
@@ -83,7 +89,10 @@ it is assumed that ACTIVATION-SEQUENCE is a `key-sequence'."
                  :initform (make-container 'vector-container)
                  :type vector-container
                  :documentation "The list of key bindings. Combinations at the
-                 start have priority.")))
+                 start have priority."))
+  (:documentation "A way that text is edited. A `mode' is mainly defined by how
+  it processes input, both with its key bindings as well as the generic function
+  PROCESS-EVENT."))
 
 (defgeneric process-event (mode event)
   (:documentation "Process EVENT based on MODE."))
@@ -98,7 +107,10 @@ it is assumed that ACTIVATION-SEQUENCE is a `key-sequence'."
          :documentation "The symbol for the name of the mode.")
    (instance :accessor mode-holder-instance
              :initarg :instance
-             :documentation "The instance of a `mode' object.")))
+             :documentation "The instance of a `mode' object."))
+  (:documentation "An object that represents a symbol for a mode and an instance
+  of a mode of a given type. For example, there should be a `mode-holder' with
+  'NORMAL-MODE for NAME and an instance of a normal mode for INSTANCE."))
 
 (defparameter *modes* (make-container 'set-container)
   "The map of mode names to instances of mode objects.")

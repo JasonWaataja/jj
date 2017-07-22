@@ -3,6 +3,7 @@
 
 (in-package #:jj)
 
+;; TODO: Change these from accessors to readers.
 (defclass text-position ()
   ((absolute-position :accessor text-position-absolute-position
                       :initarg :absolute-position
@@ -23,7 +24,14 @@
    (buffer :accessor text-position-buffer
            :initarg :buffer
            :type buffer
-           :documentation "The position the position in on.")))
+           :documentation "The position the position in on."))
+  (:documentation "Represents a character position in a buffer. These objects
+  are supposed to be immutable and not modified. A `text-position' is only valid
+  until the buffer is modified, using it after a buffer has been modified could
+  lead to an error. All operations involving `text-position's should follow a
+  functional style and return new objects instead of modifying them. You can
+  safely pass these around by pointers because they should not be modified
+  anyways."))
 
 (define-condition invalid-text-position-error (jj-error)
   ((buffer :reader buffer :initarg :buffer)
@@ -259,7 +267,11 @@ BUFFER."
             :initarg :gravity
             :initform :forward
             :documentation "The direction the mark moves when a character is
-            inserted there. The possible values are :FORWARD and :BACKWARD.")))
+            inserted there. The possible values are :FORWARD and :BACKWARD."))
+  (:documentation "A persitent place in a buffer, unlike a `text-position'. When
+  text is modified correctly, these should also be moved correctly. The thing
+  that affects this is GRAVITY which can be forwards or backward if a character
+  is inserted at that position."))
 
 (defun create-text-mark (buffer &optional (position 0))
   "If POSITION may be an `integer' or `text-position'"
@@ -271,6 +283,7 @@ BUFFER."
       mark)))
 
 (defmethod initialize-instance :after ((buffer buffer) &key)
+  "Add the mark. This is declared here to use `text-mark' stuff."
   (let ((mark (create-text-mark buffer 0)))
     (setf (buffer-cursor-mark buffer) mark)))
 
@@ -299,7 +312,12 @@ variable name."
   ((buffer :accessor text-modification-buffer
            :initarg :buffer
            :type buffer
-           :documentation "The `buffer' the modifcation operates on.")))
+           :documentation "The `buffer' the modifcation operates on."))
+  (:documentation "A modification to a buffer that does so cleanly. This means
+  that it updates all text marks, etc. This class exists because simply
+  modifying the lines of a buffer correctly would invalidate
+  invariants. Therefore, all text modification should be through this class
+  unless it is low level buffer code."))
 
 (defgeneric apply-modification (modification)
   (:documentation "Perform the text modifiction pointed to by MODIFICTION. Must
@@ -313,7 +331,8 @@ variable name."
    (position :accessor character-insertion-position
              :initarg :position
              :type text-position
-             :documentation "Where to insert the text.")))
+             :documentation "Where to insert the text."))
+  (:documentation "Insert one character into a buffer at some position."))
 
 (defun make-character-insertion (buffer character position)
   (make-instance 'character-insertion
@@ -384,7 +403,8 @@ but will not be moved if the gravity is :BACKWARD."
   ((position :accessor character-deletion-position
              :initarg :position
              :type text-position
-             :documentation "The position of the character to delete.")))
+             :documentation "The position of the character to delete."))
+  (:documentation "Delete a character in a buffer at some position."))
 
 (defun make-character-deletion (buffer position)
   (make-instance 'character-deletion
@@ -423,7 +443,8 @@ but will not be moved if the gravity is :BACKWARD."
          :initarg :text
          :initform ""
          :type string
-         :documentation "The string to insert.")))
+         :documentation "The string to insert."))
+  (:documentation "Insert a string of text into a buffer at some location."))
 
 (defun make-text-insertion (buffer text position)
   (make-instance 'text-insertion
@@ -452,7 +473,9 @@ but will not be moved if the gravity is :BACKWARD."
         :initarg :end
         :initform 0
         :type text-position
-        :documentation "The position to stop deleting before.")))
+        :documentation "The position to stop deleting before."))
+  (:documentation "Delete some amount of text in a buffer starting at start and
+  going to end, not inclusive."))
 
 (defun make-text-deletion (buffer start end)
   (make-instance 'text-deletion
@@ -528,7 +551,11 @@ and END may be either `text-position's or `integer's."
            :type text-position
            :documentation "The cursor of the selection, may be in front or behind
         of ANCHOR. Unlike most use of iterators, this is inclusive, not
-        exclusive.")))
+        exclusive."))
+  (:documentation "Represents continuous a selection of text. In most programs,
+  this would be sufficient to represent what the user is currently highlighting,
+  but since you can have multiple selections, this is represents just one of
+  them."))
 
 (defun make-text-region (buffer &optional
                                   (anchor (buffer-first-position buffer))
@@ -573,7 +600,9 @@ first position of the buffer."
             :initform (make-container 'vector-container)
             :type text-region
             :documentation "The sequence of regions that the selection
-            contains. Should contain at least one region.")))
+            contains. Should contain at least one region."))
+  (:documentation "A set of text that the user can highlight, basically one or
+  more regions."))
 
 (defun make-text-selection (buffer &optional
                                      (anchor (buffer-first-position buffer))
@@ -616,4 +645,6 @@ not always be valid.")
                                          (buffer-cursor-position *current-buffer*))))
 
 (defmethod apply-modification :after (modification)
+  "This is important because whenever a buffer is modified the selection is
+invalid and needs to be reset."
   (reset-selection))

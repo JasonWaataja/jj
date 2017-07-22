@@ -17,7 +17,10 @@
                   :initarg :documentation
                   :initform ""
                   :type string
-                  :documentation "The documentation string for the setting.")))
+                  :documentation "The documentation string for the setting."))
+  (:documentation "A program parameter that can be represented by a simple
+  value. They are manipulated through their name and can be layered with a
+  `settings-layer'."))
 
 (defparameter *settings* (make-container 'cl-containers:set-container)
   "A set of `setting' objects which SETTINGS-LAYERs are built off off. To
@@ -42,7 +45,10 @@ finding functions."
   ((settings :accessor settings-layer-settings
              :initarg :settings
              :initform (make-container 'simple-associative-container)
-             :documentation "The map of setting names to their values.")))
+             :documentation "The map of setting names to their values."))
+  (:documentation "A set of `setting' objects. These should be used together in
+  an ordered list of some sort. Later layers have settings that override lower
+  layers so that there can be buffer specific settings, etc."))
 
 (defun make-settings-layer ()
   (make-instance 'settings-layer))
@@ -59,6 +65,9 @@ finding functions."
          :setting-name setting-name
          :text (format nil "No such setting: ~a" setting-name)))
 
+;; TODO: Figure out why I did it this way and not use *GLOBAL-SETTINGS* as the
+;; default value for the LAYER argument. Change it back if there was no good
+;; reason.
 (defun set-setting (setting-name setting-value &optional layer)
   "Sets the `setting' with SETTING-NAME to SETTING-VALUE for LAYER if passed and
 *GLOBAL-SETTINGS* otherwise."

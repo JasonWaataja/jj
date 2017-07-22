@@ -24,7 +24,10 @@
    (cursor-column :accessor display-cursor-column
                   :initarg :cursor-column
                   :initform 0
-                  :documentation "The screen column of the cursor.")))
+                  :documentation "The screen column of the cursor."))
+  (:documentation "An abstract array of characters to write to. Could represent
+  a physical display or a subsection of another frame to write to. Manipulated
+  one character at a time for now."))
 
 (defgeneric write-to-display (display character row column)
   (:documentation "Writes CHARACTER to DISPLAY at ROW and COLUMN."))
@@ -82,7 +85,10 @@
    (should-dump-on-write :accessor dummy-display-should-dump-on-write
                          :initarg :should-dump-on-write
                          :initform t
-                         :documentation "Should it print every time something changes.")))
+                         :documentation "Should it print every time something changes."))
+  (:documentation "A display that simply stores an array of characters and can
+  print them to a stream. Every time this display is modified, it does so to the
+  standard output stream."))
 
 (defun make-dummy-display (rows columns)
   (make-instance 'dummy-display
@@ -112,7 +118,9 @@
   ((window :accessor charms-display-window
            :initarg :window
            :initform charms/ll:*stdscr*
-           :documentation "The window to write to.")))
+           :documentation "The window to write to."))
+  (:documentation "A display that writes to an ncurses window. This should be
+  the predominant class used in a terminal implementation."))
 
 (defun make-charms-display (&optional (window charms/ll:*stdscr*))
   "Make a `charms-display' that uses WINDOW."

@@ -24,7 +24,10 @@
    (frame :accessor buffer-frame
           :initarg frame
           :documentation "The frame that this buffer is currently assigned
-          to.")))
+          to."))
+  (:documentation "Represents a set of text to manipulate in the form of a list
+  of lines. This is what the user interacts with, and there is usually one per
+  file. They can be used to simply display text as well, though."))
 
 (define-condition buffer-line-index-error (jj-error)
   ((line :initarg :line :reader buffer-line-index-error-line)
