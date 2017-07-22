@@ -36,7 +36,7 @@ about the control or alt keys."
       (setf *command-buffer* command-buffer)
       (setf (buffer-frame *command-buffer*) command-frame)
       (setf *main-display* main-display)
-      (setf *selection-mode* :extend)
+      (setf *selection-mode* :move)
       (enter-mode 'normal-mode)
       ;; Use this restart in case MAIN is run multiple times within one Lisp
       ;; instance.
