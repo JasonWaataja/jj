@@ -37,7 +37,8 @@ about the control or alt keys."
       ;; This line also updates *SELECTION*, so no code is needed to initialize
       ;; it here.
       (set-buffer default-buffer)
-      (setf (buffer-frame *current-buffer*) default-frame)
+      (setf *main-frame* default-frame)
+      (setf (buffer-frame *current-buffer*) *main-frame*)
       (setf *command-buffer* command-buffer)
       (setf (buffer-frame *command-buffer*) command-frame)
       (setf *main-display* main-display)
@@ -51,7 +52,7 @@ about the control or alt keys."
       (clear-commands)
       (add-default-commands)
       (setf *exit-flag* nil)
-      (update-frame default-frame)
+      (update-frame *main-frame*)
       (update-frame command-frame)
       ;; (refresh-display main-displa)
       ;; (refresh-display command-display)
@@ -69,7 +70,7 @@ about the control or alt keys."
            (clear-display *main-display*)
            (clear-display command-display)
            (process-input input-chord)
-           (update-frame default-frame)
+           (update-frame *main-frame*)
            (update-frame command-frame)
          ;; This is like this because I'm not sure how to ensure which window
          ;; the cursor displays on. I'm pretty sure it's just whichever is
@@ -82,8 +83,6 @@ about the control or alt keys."
                   (refresh-display command-display))
                  (t
                   (refresh-display command-display)
-                  (refresh-display *main-display*)))
-           (when (eql ch (char-code #\a))
-             (setf *exit-flag* t)))
+                  (refresh-display *main-display*))))
       (charms/ll:delwin charms-win)
       (charms/ll:endwin))))

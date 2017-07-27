@@ -60,6 +60,8 @@
   (:documentation "Updated the contents of FRAME. Also expected to update
   FRAME's cursor position variables if necessary."))
 
+(defvar *main-frame* nil "The frame that the current buffer displays in.")
+
 (defun calculate-tab-width (current-column &optional (tab-width (get-setting 'tab-width)))
   "Return the width that a tab would occupy if inserted at CURRENT-COLUMN. Uses
 TAB-WIDTH which defaults to the TAB-WIDTH setting."
@@ -169,6 +171,12 @@ rendered and the relative column to start rendering at next."
                             (text-position-line-position cursor-position)))
                 (setf (display-cursor-row display) relative-line
                       (display-cursor-column display) (length line)))))))
+
+(defun connect-buffer-frame (buffer frame)
+  "Sets the frame of BUFFER to FRAME and the buffer of FRAME to BUFFER. The
+frame still needs to be updated afterwards."
+  (setf (buffer-frame buffer) frame
+        (buffer-frame-buffer frame) buffer))
 
 (defun update-frame-test ()
   (let* ((disp (make-dummy-display 4 12))

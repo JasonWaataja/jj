@@ -119,7 +119,14 @@ alternative names."
   "Gets rid of all commands."
   (empty! *commands*))
 
+(defun define-load ()
+  (define-command (argv "load" "l" "lo")
+    (let ((buffer (make-buffer-with-file (first argv))))
+      (set-buffer buffer)
+      (connect-buffer-frame buffer *main-frame*))))
+
 (defun add-default-commands ()
   "Adds the base commands to *COMMANDS*."
   (define-command (argv "quit" "q")
-    (exit-clean)))
+    (exit-clean))
+  (define-load))

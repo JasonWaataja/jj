@@ -24,7 +24,15 @@
    (frame :accessor buffer-frame
           :initarg frame
           :documentation "The frame that this buffer is currently assigned
-          to."))
+          to.")
+   (file :accessor buffer-file
+         :initarg :file
+         :type pathname
+         :documentation "The associated file of the buffer. The file it would
+         write to. Can be NIL because not all buffers are associated with a
+         file. This implementation might change in the future, so instead of
+         using the accessor function use BUFFER-FILE-PATHNAME and
+         BUFFER-FILE-NAMESTRING."))
   (:documentation "Represents a set of text to manipulate in the form of a list
   of lines. This is what the user interacts with, and there is usually one per
   file. They can be used to simply display text as well, though."))
@@ -73,20 +81,60 @@ case of no lines and attempting to access the first line."
 (defun signal-unknown-file-error (pathspec)
   (error 'unknown-file-error
          :pathspec pathspec
-         :text (format nil "Unknown file error when operating on: ~a" pathspec)))
+         :text (format nil "Unknown file: ~a~%" pathspec)))
 
-(defun read-file-into-buffer (buffer pathspec)
+(defun buffer-file-pathname (buffer)
+  "Returns the file of BUFFER as a `pathname'."
+  (buffer-file buffer))
+
+(defun buffer-file-namestring (buffer)
+  "Returns the file of BUFFER as a `string'."
+  (namestring (buffer-file buffer)))
+
+(define-condition non-file-pathname-error (jj-error)
+  ((pathspec :reader non-file-pathname-error-pathspec
+             :initarg :pathspec
+             :documentation "The pathspec in question that was in directory
+             form."))
+  (:documentation "An error for when a directory pathname or string was used
+  when a file was expected."))
+
+(defun ensure-file-pathname (pathspec &rest more-pathspecs)
+  "Checks if pathspec is in file form. If not, signal a
+`non-file-pathname-error'. Goes through PATHSPEC first, then each of
+MORE-PATHSPECS in order and will signal the error on the first non-file pathname
+it finds."
+  (flet ((check-file (pathspec)
+           (unless (uiop:file-pathname-p pathspec)
+             (error 'non-file-pathname-error
+                    :pathspec pathspec
+                    :text (format nil "Non-file pathname ~a" pathspec)))))
+    (check-file pathspec)
+    (dolist (pathspec more-pathspecs)
+      (check-file pathspec))))
+
+(defun buffer-associate-file (buffer pathspec)
+  "Makes the file of BUFFER point to the file at PATHSPEC. Ensures it's in file
+form and will sign and may signal a `non-file-pathname-error'."
+  (ensure-file-pathname pathspec)
+  (setf (buffer-file buffer)
+        (pathname pathspec)))
+
+(defun buffer-load-file (buffer pathspec)
   "Reads the file pointed to by PATHSPEC into BUFFER. May signal a
 `no-such-file-error' if there is no such file or `unknown-file-error' on other
 errors. This function will remember to update the display in the future but it
-doesn't now. Call UPDATE-FRAME after calling."
+doesn't now. Call UPDATE-FRAME after calling. Will associate BUFFER with
+PATHSPEC and may signal a `non-file-pathname-error'."
+  (ensure-file-pathname pathspec)
   (let ((found nil))
     (handler-case (with-open-file (reader pathspec :if-does-not-exist nil)
                     (when reader
                       (loop for line = (read-line reader nil)
                          while line
                          do (buffer-append buffer line))
-                      (setf found t)))
+                      (setf found t)
+                      (buffer-associate-file buffer pathspec)))
       (file-error () (signal-unknown-file-error pathspec))
       (error () (signal-unknown-file-error pathspec)))
     (unless found
@@ -104,6 +152,13 @@ were the current buffer.")
                                                           :element-type 'string
                                                           :initial-element default-line))))
     (container-append *buffers* buffer)
+    buffer))
+
+(defun make-buffer-with-file (pathspec)
+  "Creates a `buffer' and loads the file at PATHSPEC into it. May signal all of
+the same errors as BUFFER-LOAD-FILE."
+  (let ((buffer (make-buffer)))
+    (buffer-load-file buffer pathspec)
     buffer))
 
 (defun buffer-empty-p (buffer)

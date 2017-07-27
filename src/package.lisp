@@ -87,7 +87,7 @@
            #:buffer-lines-count
            #:buffer-line
            #:buffer-append
-           #:read-file-into-buffer
+           #:buffer-load-file
            #:invalid-text-position-error
            #:signal-invalid-text-position-error
            #:text-position
