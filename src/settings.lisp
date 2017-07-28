@@ -117,4 +117,4 @@ when automatically scrolling.")
 
 (define-setting autoscroll-method :maintain-scrolloff
   "The way the window is scrolled when it reaches SCROLLOFF. The options
-are :MAINTAIN-SCROLLOFF and :CENTER>")
+are :MAINTAIN-SCROLLOFF and :CENTER.")

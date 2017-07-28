@@ -68,7 +68,8 @@
 (defun buffer-frame-lines-size-manager (frame)
   "Assumes FRAME is a `buffer-frame' and requests for rows the line count of
 frame."
-  (values (buffer-lines-count (buffer-frame-buffer frame))
+  (values (max (buffer-lines-count (buffer-frame-buffer frame))
+               1)
           nil))
 
 (defmethod initialize-instance :after ((frame frame) &key)
@@ -89,6 +90,17 @@ frame."
 (defgeneric update-frame (frame)
   (:documentation "Updated the contents of FRAME. Also expected to update
   FRAME's cursor position variables if necessary."))
+
+(defgeneric active-frame-p (frame)
+  (:documentation "This exists to differentiate `buffer-frame's from other
+  frames in that buffer-frames check if they're pointing to the current buffer
+  and return T if it is."))
+
+(defmethod active-frame-p (frame)
+  nil)
+
+(defvar *root-frame* nil
+  "The frame that contains the top level *MAIN-FRAME* and the command buffer.")
 
 (defvar *main-frame* nil "The frame that the current buffer displays in.")
 
@@ -202,6 +214,9 @@ rendered and the relative column to start rendering at next."
                             (text-position-line-position cursor-position)))
                 (setf (display-cursor-row display) relative-line
                       (display-cursor-column display) (length line)))))))
+
+(defmethod active-frame-p ((frame buffer-frame))
+  (current-buffer-p (buffer-frame-buffer frame)))
 
 (defun connect-buffer-frame (buffer frame)
   "Sets the frame of BUFFER to FRAME and the buffer of FRAME to BUFFER. The
@@ -458,6 +473,25 @@ START depending on the orientation."
                             (+ start i)
                             j)))))
 
+(defun composite-frame-update-cursor (frame child-display current-position)
+  "If CHILD-DISPLAY contains an active frame, set the cursor position of FRAME
+to the correct translated component based on orientation. It nows how to
+translate it correctly based on starting CURRENT-POSITION from the start of the
+frame."
+  (when (active-frame-p (composite-frame-display-child child-display))
+    (let ((display (frame-display frame)))
+      (if (horizontal-frame-p frame)
+          (setf (display-cursor-row display)
+                (display-cursor-row child-display)
+                (display-cursor-column display)
+                (+ current-position
+                   (display-cursor-column child-display)))
+          (setf (display-cursor-row display)
+                (+ current-position
+                   (display-cursor-row child-display))
+                (display-cursor-column display)
+                (display-cursor-column child-display))))))
+
 (defmethod update-frame ((frame composite-frame))
   (update-frame-sizes-cache frame)
   (let ((sizes (composite-frame-sizes-cache frame))
@@ -469,6 +503,9 @@ START depending on the orientation."
            (let ((child (item-at children 0)))
              (composite-frame-display-set-size child (first sizes))
              (update-child-display child)
+             (composite-frame-update-cursor frame
+                                            child
+                                            current-size)
              (incf current-size (composite-frame-display-size child))))
        for i from 1 below (composite-frame-child-count frame)
        for child = (item-at children i)
@@ -478,6 +515,9 @@ START depending on the orientation."
          (incf current-size (composite-frame-gap frame))
          (composite-frame-display-set-size child size)
          (update-child-display child)
+         (composite-frame-update-cursor frame
+                                        child
+                                        current-size)
          (incf current-size (composite-frame-display-size child)))))
 
 (defun equal-size-manager (frame)
@@ -542,6 +582,25 @@ space equally among the rest."
                          size)
          into sizes
          finally (return sizes)))))
+
+(defun composite-frame-add-frame (parent child &optional
+                                                 (position (composite-frame-child-count parent)))
+  "Adds the `frame' child to PARENT with a new display at POSITION. POSITION
+defaults to adding the new frame at the end. Update this frame after."
+  (let ((child-display (make-composite-frame-display parent 1)))
+    (connect-child-display child-display child)
+    (insert-item-at (composite-frame-child-displays parent) child-display position)))
+
+(defun composite-frame-get-child (frame position &rest more-positions)
+  "Returns the frame at POSITION in frame. If MORE-POSITIONS is provided, then
+it attempts to descend recursivetly through composite frames."
+  (let ((child (composite-frame-display-child (item-at (composite-frame-child-displays frame)
+                                                       position))))
+    (if more-positions
+        (let ((arguments (append (list child)
+                                 more-positions)))
+          (apply #'composite-frame-get-child arguments))
+        child)))
 
 (defun composite-frame-test ()
   (let* ((display (make-dummy-display 50 50))

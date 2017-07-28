@@ -22,26 +22,33 @@ about the control or alt keys."
     ;; The line height for the charm windows are done this way because using (1-
     ;; rows) sometimes makes the command buffer non-visible I think. That should
     ;; be tested again.
-    (let* ((charms-win (charms/ll:newwin (- rows 2) columns 0 0))
-           (command-win (charms/ll:newwin 1 columns (1- rows) 0))
+    (let* ((charms-win (charms/ll:newwin rows columns 0 0))
            (main-display (make-charms-display charms-win))
-           (command-display (make-charms-display command-win))
+           (root-frame (make-instance 'composite-frame
+                                      :manager #'strong-request-manager
+                                      :orientation :vertical
+                                      :display main-display))
            (default-buffer (make-buffer))
            (command-buffer (make-buffer))
            (default-frame (make-buffer-frame
-                           :buffer default-buffer
-                           :display main-display))
+                           :buffer default-buffer))
            (command-frame (make-buffer-frame
-                           :buffer command-buffer
-                           :display command-display)))
+                           :buffer command-buffer)))
       ;; This line also updates *SELECTION*, so no code is needed to initialize
       ;; it here.
-      (set-buffer default-buffer)
-      (setf *main-frame* default-frame)
-      (setf (buffer-frame *current-buffer*) *main-frame*)
-      (setf *command-buffer* command-buffer)
-      (setf (buffer-frame *command-buffer*) command-frame)
       (setf *main-display* main-display)
+      (set-buffer default-buffer)
+      (setf *root-frame* root-frame)
+      (setf *main-frame* default-frame)
+      (connect-buffer-frame *current-buffer* *main-frame*)
+      (setf (frame-size-manager *main-frame*)
+            #'no-request-size-manager)
+      (composite-frame-add-frame *root-frame* *main-frame*)
+      (setf *command-buffer* command-buffer)
+      (connect-buffer-frame *command-buffer* command-frame)
+      (setf (frame-size-manager command-frame)
+            #'buffer-frame-lines-size-manager)
+      (composite-frame-add-frame *root-frame* command-frame)
       (setf *selection-mode* :move)
       (enter-mode 'normal-mode)
       ;; Use this restart in case MAIN is run multiple times within one Lisp
@@ -68,21 +75,8 @@ about the control or alt keys."
                      input-chord))
            (update-time)
            (clear-display *main-display*)
-           (clear-display command-display)
            (process-input input-chord)
-           (update-frame *main-frame*)
-           (update-frame command-frame)
-         ;; This is like this because I'm not sure how to ensure which window
-         ;; the cursor displays on. I'm pretty sure it's just whichever is
-         ;; refreshed last. So, this ensures that the cursor is in the correct
-         ;; section, a hopefully temporary hack.
-
-         ;; TODO: Figure out how to choose which window the cursor is on.
-           (cond ((command-mode-p)
-                  (refresh-display *main-display*)
-                  (refresh-display command-display))
-                 (t
-                  (refresh-display command-display)
-                  (refresh-display *main-display*))))
+           (update-frame *root-frame*)
+           (refresh-display *main-display*))
       (charms/ll:delwin charms-win)
       (charms/ll:endwin))))
