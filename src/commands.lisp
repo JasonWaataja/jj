@@ -41,7 +41,7 @@
                                     :action action))))
     (container-append *commands* command)))
 
-(defmacro define-command ((argv-var name &rest alt-names) &body body)
+(defmacro make-command ((argv-var name &rest alt-names) &body body)
   "Defines a `command' with NAME and ALT-NAMES. The action of the command calls
 body with ARGV-VAR bound to the list of arguments passed to the command."
   (alexandria:once-only (name)
@@ -119,14 +119,26 @@ alternative names."
   "Gets rid of all commands."
   (empty! *commands*))
 
-(defun define-load ()
-  (define-command (argv "load" "l" "lo")
-    (let ((buffer (make-buffer-with-file (first argv))))
-      (set-buffer buffer)
-      (connect-buffer-frame buffer *main-frame*))))
+(defun load-action (argv)
+  ;; TODO: Prompt the user for a file if there were no arguments.
+  (let ((buffer (make-buffer-with-file (first argv))))
+    (set-buffer buffer)
+    (connect-buffer-frame buffer *main-frame*)))
+
+(defun save-action (argv)
+  "May throw any the conditions of BUFFER-SAVE-FILE. Uses the first argument of
+argv and associates BUFFER to it or the existing file otherwise."
+  (let ((pathspec (if (null argv)
+                      (buffer-file-pathname *current-buffer*)
+                      (first argv))))
+    (buffer-associate-file *current-buffer* pathspec)
+    (buffer-save-file *current-buffer*)))
 
 (defun add-default-commands ()
   "Adds the base commands to *COMMANDS*."
-  (define-command (argv "quit" "q")
+  (make-command (argv "quit" "q")
     (exit-clean))
-  (define-load))
+  (make-command (argv "load" "lo" "l")
+    (load-action argv))
+  (make-command (argv "save" "s")
+    (save-action argv)))

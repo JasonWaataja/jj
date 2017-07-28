@@ -60,7 +60,8 @@ case of no lines and attempting to access the first line."
       (setf (aref (buffer-lines buffer) line-number) line)))
 
 (defun buffer-append (buffer line)
-  "Adds LINE to the end of the list of lines in BUFFER."
+  "Adds LINE to the end of the list of lines in BUFFER. This is for internal
+use, mostly. Buffers should be modified through `text-modification' objects."
   (vector-push-extend line (buffer-lines buffer)))
 
 (define-condition no-such-file-error (jj-error)
@@ -139,6 +140,34 @@ PATHSPEC and may signal a `non-file-pathname-error'."
       (error () (signal-unknown-file-error pathspec)))
     (unless found
       (signal-no-such-file-error pathspec))))
+
+(define-condition buffer-no-file-error (jj-error)
+  ((buffer :reader buffer
+           :initarg :buffer
+           :documentation "The buffer with no file."))
+  (:documentation "Signalled when a buffer with no associated file is
+  saved."))
+
+(defun signal-buffer-no-file-error (buffer)
+  (error 'buffer-no-file-error
+         :buffer buffer
+         :text (format nil "Buffer ~a has no file." buffer)))
+
+(defun buffer-save-file (buffer)
+  "Write the contents of BUFFER to its associated file if it has one. May signal
+a `buffer-no-file-error' if BUFFER has no file and an `unknown-file-error' on an
+io error."
+  (let ((pathname (buffer-file-pathname buffer)))
+    (unless pathname
+      (signal-buffer-no-file-error buffer))
+    (handler-case
+        (with-open-file (writer pathname
+                                :direction :output
+                                :if-exists :supersede)
+          (loop for line across (buffer-lines buffer)
+             do (write-line line writer)))
+      ;; Don't catch a `file-error' here because :IF-EXISTS is :SUPERSEDE.
+      (error () (signal-unknown-file-error pathname)))))
 
 ;; TODO: Figure out the correct container for this.
 (defparameter *buffers* (make-container 'vector-container)
