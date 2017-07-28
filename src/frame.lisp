@@ -7,7 +7,15 @@
   ((display :accessor frame-display
             :initarg :display
             :initform nil
-            :documentation "The display to write to."))
+            :documentation "The display to write to.")
+   (size-manager :accessor frame-size-manager
+                 :initarg :size-manager
+                 :type function
+                 :documentation "A function that returns two values, the first
+                 being requested rows and the second being requested
+                 columns. There should be a method that makes this default to a
+                 function that returns the display's dimensions. A function may
+                 return NIL to give no preference."))
   (:documentation "An array of text that is the middle between a buffer and a
   display. Some object, usually a buffer, figures out how to update a frame,
   which in turn knows how to update the display somehow."))
@@ -47,6 +55,28 @@
          :text (format nil "Invalid frame values: ~a ~a"
                        rows
                        columns)))
+
+(defun preserve-size-manager (frame)
+  "Returns the dimensions of the display of FRAME."
+  (values (frame-rows frame) (frame-columns frame)))
+
+(defun no-request-size-manager (frame)
+  "Give no preference for size."
+  (declare (ignore frame))
+  (values nil nil))
+
+(defun buffer-frame-lines-size-manager (frame)
+  "Assumes FRAME is a `buffer-frame' and requests for rows the line count of
+frame."
+  (values (buffer-lines-count (buffer-frame-buffer frame))
+          nil))
+
+(defmethod initialize-instance :after ((frame frame) &key)
+  (setf (frame-size-manager frame) #'preserve-size-manager))
+
+(defun frame-request-size (frame)
+  "Calls FRAME's size manager on itself."
+  (funcall (frame-size-manager frame) frame))
 
 (defun make-buffer-frame (&key buffer display (row 0) (column 0))
   "Creates a buffer-frame, may throw an INVALID-BUFFER-FRAME-VALUE."
@@ -352,12 +382,24 @@ be taken up gaps."
   "Updates the child of CHILD-DISPLAY"
   (update-frame (composite-frame-display-child child-display)))
 
+(defmacro iterate-composite-frame-children ((var frame &optional result) &body body)
+  "Perform body with VAR bound to each child display of FRAME."
+    `(do-container (,var (composite-frame-child-displays ,frame) ,result)
+       ,@body)))
+
+(defmacro iterate-composite-frame-children-frames ((var frame &optional result) &body body)
+  "Same as ITERATE-COMPOSITE-FRAME-CHILDREN but VAR is bound to the frame of
+each child instead."
+  `(iterate-composite-frame-children (,var ,frame ,result)
+     (let ((,var (composite-frame-display-child ,var)))
+       ,@body)))
+
 (defun composite-frame-display-position (display)
   "Returns the position of DISPLAY in its parent's ordering, NIL if it cannot be
 found."
   (let ((parent (composite-frame-display-parent display))
         (position 0))
-    (do-container (child (composite-frame-child-displays parent))
+    (iterate-composite-frame-children (child parent)
       (when (eql display child)
         (return-from composite-frame-display-position
           position))
@@ -442,6 +484,8 @@ START depending on the orientation."
   "Gives each display the same size if possible, less to the later ones if
 necessary."
   (multiple-value-bind (size remainder)
+      ;; TODO: Make this so it doesn't crach from divide-by-zero on a frame with
+      ;; no children.
       (ceiling (composite-frame-free-size frame)
                (composite-frame-child-count frame))
     (if (zerop remainder)
@@ -450,19 +494,71 @@ necessary."
                            :initial-element size)
                 (list (+ size remainder))))))
 
+(defun composite-frame-child-requests (frame)
+  "Returns a list of the request of each child of FRAME in the correct dimension"
+  (let ((requests '()))
+    (iterate-composite-frame-children-frames (child frame)
+      (push (multiple-value-bind (rows columns)
+                (frame-request-size child)
+              (if (horizontal-frame-p frame)
+                  columns
+                  rows))
+            requests))
+    (nreverse requests)))
+
+;; TODO: Split this up into functions.
+(defun strong-request-manager (frame)
+  "Gives each child its requested size if it has one and divides the remaining
+space equally among the rest."
+  (let* ((requests (composite-frame-child-requests frame))
+         (no-request-count 0)
+         ;; TODO: Make sure this still works with composite frames with no
+         ;; children. It might not because of the call to 1-.
+         (remaining (loop for request in requests
+                       if request sum request into size
+                       else sum 0 into size
+                       and do (incf no-request-count)
+                       finally
+                         (return (- (composite-frame-size frame)
+                                    size
+                                    (* (composite-frame-gap frame)
+                                       (1- (composite-frame-child-count frame))))))))
+    (multiple-value-bind (size remainder)
+        (if (zerop no-request-count)
+            (values 0 0)
+            (ceiling remaining no-request-count))
+      (loop for request in requests
+         if request
+         collect request into sizes
+         else do
+           (decf no-request-count)
+         ;; If we're on the last child with no requests, i.e. NO-REQUEST-COUNT
+         ;; is 0 and the remaining space was not divided evently,
+         ;; i.e. REMAINDER is some negative number, take the remaining size of
+         ;; the last element.
+         and collect (if (and (zerop no-request-count)
+                              (not (zerop remainder)))
+                         (+ size remainder)
+                         size)
+         into sizes
+         finally (return sizes)))))
+
 (defun composite-frame-test ()
   (let* ((display (make-dummy-display 50 50))
          (frame (make-instance 'composite-frame
                                :display display
                                :gap 2
                                :orientation :vertical
-                               :manager #'equal-size-manager)))
-    (loop repeat 3
+                               :manager #'strong-request-manager)))
+    (loop for i below 3
        for child = (make-composite-frame-display frame 5)
        for buffer = (make-buffer 3 "Test line")
        for child-frame = (make-buffer-frame :buffer buffer
                                             :display child)
        do
+         (if (= i 1)
+             (setf (frame-size-manager child-frame) #'no-request-size-manager)
+             (setf (frame-size-manager child-frame) #'buffer-frame-lines-size-manager))
          (connect-child-display child child-frame)
          (container-append (composite-frame-child-displays frame)
                            child))
