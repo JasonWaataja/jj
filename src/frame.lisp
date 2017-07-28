@@ -113,6 +113,7 @@ rendered and the relative column to start rendering at next."
                                          (- i (buffer-frame-column buffer-frame)))))))
        (return (values current-column (- current-width (buffer-frame-column buffer-frame))))))
 
+;; TODO: Rewrite this monster function.
 (defmethod update-frame ((frame buffer-frame))
   (loop for relative-line from 0
      for current-line = (+ relative-line (buffer-frame-row frame))
@@ -191,52 +192,6 @@ frame still needs to be updated afterwards."
     (update-frame frame)
     (dump-display disp)))
 
-(defclass composite-frame (frame)
-  ((subdisplays :accessor composite-frame-subdisplays
-                :initarg :subdisplays
-                :initform (make-array 0
-                                      :adjustable t
-                                      :fill-pointer 0)
-                :documentation "The displays for the child frames to be displayed.")
-   (orientation :accessor composite-frame-orientation
-                :initarg :orientation
-                :initform :horizontal
-                :documentation "The direction new frames are opened
-                in. :HORIZONTAL means a vertial split and :VERTICAL means a
-                horizontal split."))
-  (:documentation "A frame that holds more than one subframe and displays them
-  all in some way."))
-
-(defclass composite-frame-display (display)
-  ((parent :accessor composite-frame-display-parent
-           :initarg :parent
-           :initform nil
-           :documentation "The composite frame that it renders to."))
-  (:documentation "A display that represents one part of a
-  `composite-frame'. Writing to this display writes to its parent's display, and
-  a frame would be able to write to this display as if it were a normal
-  display."))
-
-(defun make-composite-frame-display (parent size)
-  "Make a COMPOSITE-FRAME-DISPLAY with PARENT and SIZE tall if vertial, SIZE
-wide of horizontal."
-  (if (eql (composite-frame-orientation parent) :vertical)
-      (make-instance 'composite-frame-display
-                     :parent parent
-                     :rows size
-                     :columns (frame-columns parent))
-      (make-instance 'composite-frame-display
-                     :parent parent
-                     :rows (frame-rows parent)
-                     :columns size)))
-
-(defun frame-size (frame)
-  "Returns the rows of the COMPOSITE-FRAME if it's vertical, columns if it's
-horizontal."
-  (if (eql (composite-frame-orientation frame) :horizontal)
-      (frame-columns frame)
-      (frame-rows frame)))
-
 (defun scroll-buffer-frame (frame &optional (count 1))
   "Moves FRAME down by COUNT lines. COUNT can be negative."
   (decf (buffer-frame-row frame) count))
@@ -280,3 +235,236 @@ horizontal."
                           (frame-rows frame))))
                 ((eql method :center)
                  (center-buffer-frame frame))))))))
+
+(defclass composite-frame (frame)
+  ((child-displays :accessor composite-frame-child-displays
+                :initarg :child-displays
+                :initform (make-container 'vector-container)
+                :type vector-container
+                :documentation "The displays for the child frames to be displayed.")
+           (orientation :accessor composite-frame-orientation
+                :initarg :orientation
+                :initform :horizontal
+                :documentation "The direction new frames are opened
+                in. :HORIZONTAL means a vertial split and :VERTICAL means a
+                horizontal split.")
+   (gap :accessor composite-frame-gap
+        :initarg :gap
+        :initform 0
+        :type integer
+        :documentation "The amount of space in between each child display.")
+   (manager :accessor composite-frame-manager
+            :initarg :manager
+            :type function
+            :documentation "A `function' that takes a `composite-frame' and
+            returns a list of values corresponding lengths to make each child
+            display.")
+   (sizes-cache :accessor composite-frame-sizes-cache
+                :initarg :sizes-cache
+                :type list
+                :documentation "A place to store a call to the manager, update
+                this before using it if you want to be sure, which would usually
+                be in UPDATE-FRAME."))
+  (:documentation "A frame that holds more than one subframe and displays them
+  all in some way."))
+
+(defclass composite-frame-display (display)
+  ((parent :accessor composite-frame-display-parent
+           :initarg :parent
+           :type composite-frame
+           :documentation "The composite frame that it renders to.")
+   (child :accessor composite-frame-display-child
+          :initarg :child
+          :type frame
+          :documentation "The frame that renders to this frame."))
+  (:documentation "A display that represents one part of a
+  `composite-frame'. Writing to this display writes to its parent's display, and
+  a frame would be able to write to this display as if it were a normal
+  display."))
+
+(defun make-composite-frame-display (parent size)
+  "Make a COMPOSITE-FRAME-DISPLAY with PARENT and SIZE tall if vertial, SIZE
+wide of horizontal."
+  (if (eql (composite-frame-orientation parent) :vertical)
+      (make-instance 'composite-frame-display
+                     :parent parent
+                     :rows size
+                     :columns (frame-columns parent))
+      (make-instance 'composite-frame-display
+                     :parent parent
+                     :rows (frame-rows parent)
+                     :columns size)))
+
+(defun connect-child-display (display frame)
+  "Makes DISPLAY and FRAME point to each other and update together."
+  (setf (composite-frame-display-child display) frame
+        (frame-display frame) display))
+
+(defun horizontal-frame-p (frame)
+  "Returns if the `composite-frame' FRAME is horizontal."
+  (eql (composite-frame-orientation frame) :horizontal))
+
+(defun vertical-frame-p (frame)
+  "Returns if the `composite-frame' FRAME is vertical."
+  (eql (composite-frame-orientation frame) :vertical))
+
+(defun composite-frame-size (frame)
+  "Returns the rows of the COMPOSITE-FRAME if it's vertical, columns if it's
+horizontal."
+  (if (horizontal-frame-p frame)
+      (frame-columns frame)
+      (frame-rows frame)))
+
+(defun composite-frame-display-size (child-display)
+  "Returns the correct size of the display based on its orientation."
+  (if (horizontal-frame-p (composite-frame-display-parent child-display))
+      (display-columns child-display)
+      (display-rows child-display)))
+
+;; TODO: Perhaps redo this as a setf function.
+(defun composite-frame-display-set-size (child-display size)
+  "Sets the size of CHILD-DISPLAY in the correct dimension to SIZE."
+  (if (horizontal-frame-p (composite-frame-display-parent child-display))
+      (setf (display-columns child-display) size)
+      (setf (display-rows child-display) size)))
+
+(defun composite-frame-child-count (frame)
+  "Returns the amount of children in a `composite-display'."
+  (cl-containers:size (composite-frame-child-displays frame)))
+
+(defun composite-frame-free-size (frame)
+  "Returns the size of the `composite-frame' FRAME minus the amount that would
+be taken up gaps."
+  (- (composite-frame-size frame)
+     (* (composite-frame-child-count frame)
+        (composite-frame-gap frame))))
+
+(defun composite-frame-sizes (frame)
+  "Calls the frame's manager on the frame itself."
+  (funcall (composite-frame-manager frame) frame))
+
+(defun update-frame-sizes-cache (frame)
+  "Updates the cache of the call to FRAME's manager."
+  (setf (composite-frame-sizes-cache frame)
+        (composite-frame-sizes frame)))
+
+(defun update-child-display (child-display)
+  "Updates the child of CHILD-DISPLAY"
+  (update-frame (composite-frame-display-child child-display)))
+
+(defun composite-frame-display-position (display)
+  "Returns the position of DISPLAY in its parent's ordering, NIL if it cannot be
+found."
+  (let ((parent (composite-frame-display-parent display))
+        (position 0))
+    (do-container (child (composite-frame-child-displays parent))
+      (when (eql display child)
+        (return-from composite-frame-display-position
+          position))
+      (incf position))))
+
+(defun composite-frame-display-start (display)
+  "Returns the size of all the stuff in the display up until that point as
+the second return value or NIL if it cannot be found."
+  (let ((parent (composite-frame-display-parent display))
+        (size 0))
+    (do-container (child (composite-frame-child-displays parent))
+      (when (eql display child)
+        (return-from composite-frame-display-start
+          size))
+      (incf size (+ (composite-frame-display-size child)
+                    (composite-frame-gap parent))))))
+
+;; WARNING: Relies on the sizes cache being set correctly.
+(defmethod write-to-display ((display composite-frame-display) character row column)
+  (let ((parent (composite-frame-display-parent display))
+        (size (composite-frame-display-start display)))
+    (if (horizontal-frame-p parent)
+        (write-to-display (frame-display parent)
+                          character
+                          row
+                          (+ size column))
+        (write-to-display (frame-display parent)
+                          character
+                          (+ size row)
+                          column))))
+
+;; WARNING: Relies on the sizes cache being set correctly.
+(defmethod read-from-display ((display composite-frame-display) row column)
+  (let ((parent (composite-frame-display-parent display))
+        (size (composite-frame-display-start display)))
+    (if (horizontal-frame-p parent)
+        (read-from-display (frame-display parent)
+                           row
+                           (+ size column))
+        (read-from-display (frame-display parent)
+                           (+ size row)
+                           column))))
+
+(defun write-gap (frame start)
+  "Writes the gap to the `composite-frame' FRAME starting at the row or column
+START depending on the orientation."
+  (dotimes (i (composite-frame-gap frame))
+    (dotimes (j (composite-frame-size frame))
+      (if (horizontal-frame-p frame)
+          (write-to-display (frame-display frame)
+                            #\|
+                            j
+                            (+ start i))
+          (write-to-display (frame-display frame)
+                            #\-
+                            (+ start i)
+                            j)))))
+
+(defmethod update-frame ((frame composite-frame))
+  (update-frame-sizes-cache frame)
+  (let ((sizes (composite-frame-sizes-cache frame))
+        (children (composite-frame-child-displays frame)))
+    (loop with current-size = 0
+       initially
+         (when (not (empty-p children))
+           ;; TODO: Figure out if I can use CL-CONTAINERS:FIRST-ITEM here.
+           (let ((child (item-at children 0)))
+             (composite-frame-display-set-size child (first sizes))
+             (update-child-display child)
+             (incf current-size (composite-frame-display-size child))))
+       for i from 1 below (composite-frame-child-count frame)
+       for child = (item-at children i)
+       for size in (rest sizes)
+       do
+         (write-gap frame current-size)
+         (incf current-size (composite-frame-gap frame))
+         (composite-frame-display-set-size child size)
+         (update-child-display child)
+         (incf current-size (composite-frame-display-size child)))))
+
+(defun equal-size-manager (frame)
+  "Gives each display the same size if possible, less to the later ones if
+necessary."
+  (multiple-value-bind (size remainder)
+      (ceiling (composite-frame-free-size frame)
+               (composite-frame-child-count frame))
+    (if (zerop remainder)
+        (make-list (composite-frame-child-count frame) :initial-element size)
+        (append (make-list (1- (composite-frame-child-count frame))
+                           :initial-element size)
+                (list (+ size remainder))))))
+
+(defun composite-frame-test ()
+  (let* ((display (make-dummy-display 50 50))
+         (frame (make-instance 'composite-frame
+                               :display display
+                               :gap 2
+                               :orientation :vertical
+                               :manager #'equal-size-manager)))
+    (loop repeat 3
+       for child = (make-composite-frame-display frame 5)
+       for buffer = (make-buffer 3 "Test line")
+       for child-frame = (make-buffer-frame :buffer buffer
+                                            :display child)
+       do
+         (connect-child-display child child-frame)
+         (container-append (composite-frame-child-displays frame)
+                           child))
+    (update-frame frame)
+    (dump-display display)))

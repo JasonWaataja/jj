@@ -177,7 +177,7 @@ were the current buffer.")
 (defun make-buffer (&optional (initial-lines 0) (default-line ""))
   (let ((buffer (make-instance 'buffer :lines (make-array initial-lines
                                                           :adjustable t
-                                                          :fill-pointer 0
+                                                          :fill-pointer initial-lines
                                                           :element-type 'string
                                                           :initial-element default-line))))
     (container-append *buffers* buffer)
