@@ -158,19 +158,20 @@ rendered and the relative column to start rendering at next."
 ;; TODO: Rewrite this monster function.
 (defmethod update-frame ((frame buffer-frame))
   (loop for relative-line from 0
-     for current-line = (+ relative-line (buffer-frame-row frame))
+     with current-line = (buffer-frame-row frame)
      with buffer = (buffer-frame-buffer frame)
      with display = (frame-display frame)
      while (and (< relative-line (frame-rows frame))
                 (< current-line (buffer-lines-count buffer)))
-     for line = (buffer-line buffer current-line)
+     with line = (buffer-line buffer current-line)
      with cursor-mark = (buffer-cursor-mark buffer)
      with cursor-position = (text-mark-current-position cursor-mark)
+     with current-column = 0
      do
-       (multiple-value-bind (current-column relative-column)
-           (render-leading-if-needed (buffer-line buffer current-line) frame relative-line)
-         (loop while (and (< current-column (length line))
-                          (< relative-column (frame-columns frame)))
+       (multiple-value-bind (new-current-column relative-column)
+           (render-leading-if-needed line frame relative-line)
+         (incf current-column new-current-column)
+         (loop while (< current-column (length line))
             for current-position = (make-text-position-with-line buffer
                                                                  current-line
                                                                  current-column)
@@ -207,13 +208,22 @@ rendered and the relative column to start rendering at next."
             when on-highlight
             do
               (end-highlight display)
+            when (>= relative-column (display-columns display))
+            if (buffer-get-setting buffer 'should-wrap)
+            return nil
+            else do
+              (loop-finish)
             finally
               (when (and (= current-line
                             (text-position-line-number cursor-position))
-                         (= (length line)
+                         (= current-column
                             (text-position-line-position cursor-position)))
                 (setf (display-cursor-row display) relative-line
-                      (display-cursor-column display) (length line)))))))
+                      (display-cursor-column display) relative-column))
+              (incf current-line)
+              (when (< current-line (buffer-lines-count buffer))
+                (setf line (buffer-line buffer current-line)))
+              (setf current-column 0)))))
 
 (defmethod active-frame-p ((frame buffer-frame))
   (current-buffer-p (buffer-frame-buffer frame)))

@@ -32,10 +32,27 @@
          write to. Can be NIL because not all buffers are associated with a
          file. This implementation might change in the future, so instead of
          using the accessor function use BUFFER-FILE-PATHNAME and
-         BUFFER-FILE-NAMESTRING."))
+         BUFFER-FILE-NAMESTRING.")
+   (settings :accessor buffer-settings
+             :initarg :settings
+             :initform (make-settings-layer)
+             :type settings-layer
+             :documentation "A set of buffer-local settings that should override
+             the normal settings."))
   (:documentation "Represents a set of text to manipulate in the form of a list
   of lines. This is what the user interacts with, and there is usually one per
   file. They can be used to simply display text as well, though."))
+
+(defun buffer-set-setting (buffer setting-name setting-value)
+  "Like SET-SETTING for just for this buffer's layer."
+  (set-setting setting-name setting-value (buffer-settings buffer)))
+
+(defun buffer-get-setting (buffer setting-name)
+  "Returns the value of the setting layered on top of *global-settings* and the
+buffer's local settings."
+  (get-setting setting-name
+               (list (buffer-settings buffer)
+                     *global-settings*)))
 
 (define-condition buffer-line-index-error (jj-error)
   ((line :initarg :line :reader buffer-line-index-error-line)

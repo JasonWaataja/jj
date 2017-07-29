@@ -118,3 +118,7 @@ when automatically scrolling.")
 (define-setting autoscroll-method :maintain-scrolloff
   "The way the window is scrolled when it reaches SCROLLOFF. The options
 are :MAINTAIN-SCROLLOFF and :CENTER.")
+
+(define-setting should-wrap t
+  "If, in a buffer, a line would go over the edge of the screen, wrap it around
+and start rendering it on the next line. If NIL, just don't render the end.")
