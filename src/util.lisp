@@ -79,3 +79,22 @@ something."
 (defun as-bool (val)
   "Returns NIL if VAL is NIL, T otherwise."
   (if val t))
+
+(defun concatenate-separated (result-type separation-sequence &rest sequences)
+  "Like CONCATENATE, but puts SEPARATION-SEQUENCE between each sequence in
+SEQUENECES."
+  (let ((new-sequences '()))
+    (when sequences
+      (push (first sequences) new-sequences)
+      (dolist (sequence (rest sequences))
+        (push separation-sequence new-sequences)
+        (push sequence new-sequences)))
+    (apply #'concatenate
+           (append (list result-type)
+                   (nreverse new-sequences)))))
+
+(defun concatenate-string-list (strings &optional (separation-sequence " "))
+  "Combines each `string' in STRINGS with SEPARATION-SEQUENCE."
+  (apply #'concatenate-separated
+         (append (list 'string separation-sequence)
+                 strings)))

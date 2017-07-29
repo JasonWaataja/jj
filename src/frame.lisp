@@ -14,8 +14,8 @@
                  :documentation "A function that returns two values, the first
                  being requested rows and the second being requested
                  columns. There should be a method that makes this default to a
-                 function that returns the display's dimensions. A function may
-                 return NIL to give no preference."))
+                 function that gives no size request. A function may return NIL
+                 to give no preference."))
   (:documentation "An array of text that is the middle between a buffer and a
   display. Some object, usually a buffer, figures out how to update a frame,
   which in turn knows how to update the display somehow."))
@@ -72,8 +72,14 @@ frame."
                1)
           nil))
 
+(defun buffer-frame-lines-invisible-size-manager (frame)
+  "Same as BUFFER-FRAME-LINES-SIZE-MANAGER except it can be displayed with no
+lines if the buffer is empty."
+  (values (buffer-lines-count (buffer-frame-buffer frame))
+          nil))
+
 (defmethod initialize-instance :after ((frame frame) &key)
-  (setf (frame-size-manager frame) #'preserve-size-manager))
+  (setf (frame-size-manager frame) #'no-request-size-manager))
 
 (defun frame-request-size (frame)
   "Calls FRAME's size manager on itself."
@@ -606,6 +612,16 @@ defaults to adding the new frame at the end. Update this frame after."
   (let ((child-display (make-composite-frame-display parent 1)))
     (connect-child-display child-display child)
     (insert-item-at (composite-frame-child-displays parent) child-display position)))
+
+(defun composite-frame-add-buffer (parent buffer &key
+                                                   (position (composite-frame-child-count parent))
+                                                   (size-manager #'no-request-size-manager))
+  "Adds BUFFER to the `composite-frame' PARENT with a newly created
+`buffer-frame' with an optional size manager."
+  (let ((frame (make-buffer-frame)))
+    (connect-buffer-frame buffer frame)
+    (setf (frame-size-manager frame) size-manager)
+    (composite-frame-add-frame parent frame position)))
 
 (defun composite-frame-get-child (frame position &rest more-positions)
   "Returns the frame at POSITION in frame. If MORE-POSITIONS is provided, then

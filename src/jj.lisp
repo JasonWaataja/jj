@@ -11,6 +11,33 @@ about the control or alt keys."
   ;; this or something.
   (make-chord (code-char ch)))
 
+(defun init-frames (rows columns)
+  "Sets up all the default frames with their default buffers and displays given
+that the maximum rows and columns of the display."
+  (setf *main-display* (make-charms-display (charms/ll:newwin rows columns 0 0)))
+  (setf *root-frame* (make-instance 'composite-frame
+                                    :manager #'strong-request-manager
+                                    :orientation :vertical
+                                    :display *main-display*))
+  (set-buffer (make-buffer))
+  ;; This assumes the default size manager for a frame is to give no request,
+  ;; this may change later.
+  (setf *main-frame* (make-buffer-frame :display *main-display*))
+  (connect-buffer-frame *current-buffer* *main-frame*)
+  (composite-frame-add-frame *root-frame* *main-frame*)
+  (setf *status-line-buffer* (make-buffer)
+        *message-buffer* (make-buffer)
+        *command-buffer* (make-buffer))
+  (composite-frame-add-buffer *root-frame*
+                              *status-line-buffer*
+                              :size-manager #'buffer-frame-lines-size-manager)
+  (composite-frame-add-buffer *root-frame*
+                              *message-buffer*
+                              :size-manager #'buffer-frame-lines-invisible-size-manager)
+  (composite-frame-add-buffer *root-frame*
+                              *command-buffer*
+                              :size-manager #'buffer-frame-lines-size-manager))
+
 (defun main (argv)
   "Entry point for jj"
   (declare (ignore argv))
@@ -19,72 +46,34 @@ about the control or alt keys."
   (charms/ll:noecho)
   (multiple-value-bind (rows columns)
       (charms/ll:get-maxyx charms/ll:*stdscr*)
-    ;; The line height for the charm windows are done this way because using (1-
-    ;; rows) sometimes makes the command buffer non-visible I think. That should
-    ;; be tested again.
-    (let* ((charms-win (charms/ll:newwin rows columns 0 0))
-           (main-display (make-charms-display charms-win))
-           (root-frame (make-instance 'composite-frame
-                                      :manager #'strong-request-manager
-                                      :orientation :vertical
-                                      :display main-display))
-           (default-buffer (make-buffer))
-           (message-buffer (make-buffer))
-           (command-buffer (make-buffer))
-           (default-frame (make-buffer-frame
-                           :buffer default-buffer))
-           (message-frame (make-buffer-frame
-                           :buffer message-buffer))
-           (command-frame (make-buffer-frame
-                           :buffer command-buffer)))
-      ;; This line also updates *SELECTION*, so no code is needed to initialize
-      ;; it here.
-      (setf *main-display* main-display)
-      (set-buffer default-buffer)
-      (setf *root-frame* root-frame)
-      (setf *main-frame* default-frame)
-      (connect-buffer-frame *current-buffer* *main-frame*)
-      (setf (frame-size-manager *main-frame*)
-            #'no-request-size-manager)
-      (composite-frame-add-frame *root-frame* *main-frame*)
-      (setf *message-buffer* message-buffer)
-      (connect-buffer-frame *message-buffer* message-frame)
-      (setf (frame-size-manager message-frame)
-            #'buffer-frame-lines-size-manager)
-      (composite-frame-add-frame *root-frame* message-frame)
-      (setf *command-buffer* command-buffer)
-      (connect-buffer-frame *command-buffer* command-frame)
-      (setf (frame-size-manager command-frame)
-            #'buffer-frame-lines-size-manager)
-      (composite-frame-add-frame *root-frame* command-frame)
-      (setf *selection-mode* :move)
-      (enter-mode 'normal-mode)
-      ;; Use this restart in case MAIN is run multiple times within one Lisp
-      ;; instance.
-      (handler-bind ((override-binding-error #'use-new-binding))
-        (enable-default-bindings))
-      ;; Just in case this is being run multiple times in one Lisp instance.
-      (clear-commands)
-      (add-default-commands)
-      (setf *exit-flag* nil)
-      (update-frame *main-frame*)
-      (update-frame command-frame)
-      ;; (refresh-display main-displa)
-      ;; (refresh-display command-display)
-      (charms/ll:refresh)
-      (update-time)
-      (loop while (not *exit-flag*)
-         for ch = (charms/ll:wgetch charms-win)
-         for input-chord = (ncurses-input-to-chord ch)
-         do
-           (when (get-setting 'dump-key-events)
-             (format t "Received ncurses key ~a, equivalent to ~a~%"
-                     ch
-                     input-chord))
-           (update-time)
-           (clear-display *main-display*)
-           (process-input input-chord)
-           (update-frame *root-frame*)
-           (refresh-display *main-display*))
-      (charms/ll:delwin charms-win)
-      (charms/ll:endwin))))
+    (init-frames rows columns))
+  (setf *selection-mode* :move)
+  (enter-mode 'normal-mode)
+  ;; Use this restart in case MAIN is run multiple times within one Lisp
+  ;; instance.
+  (handler-bind ((override-binding-error #'use-new-binding))
+    (enable-default-bindings))
+  ;; Just in case this is being run multiple times in one Lisp instance.
+  (clear-commands)
+  (add-default-commands)
+  (setf *exit-flag* nil)
+  (update-status-line)
+  (update-frame *root-frame*)
+  (charms/ll:refresh)
+  (update-time)
+  (loop while (not *exit-flag*)
+     for ch = (charms/ll:wgetch (charms-display-window *main-display*))
+     for input-chord = (ncurses-input-to-chord ch)
+     do
+       (when (get-setting 'dump-key-events)
+         (format t "Received ncurses key ~a, equivalent to ~a~%"
+                 ch
+                 input-chord))
+       (update-time)
+       (clear-display *main-display*)
+       (process-input input-chord)
+       (update-status-line)
+       (update-frame *root-frame*)
+       (refresh-display *main-display*))
+  (charms/ll:delwin (charms-display-window *main-display*))
+  (charms/ll:endwin))

@@ -24,6 +24,7 @@
                          (:file "frame")
                          (:file "selecting")
                          (:file "editing")
+                         (:file "status")
                          (:file "commands")
                          (:file "bindings")
                          (:file "jj")))))

@@ -101,6 +101,9 @@ it is assumed that ACTIVATION-SEQUENCE is a `key-sequence'."
   (:documentation "Take a key, which can have modifiers, hence using `chord',
   and process it based on MODE."))
 
+(defgeneric mode-output-name (mode)
+  (:documentation "Return a `string' that shows the name of the mode."))
+
 (defclass mode-holder ()
   ((name :accessor mode-holder-name
          :initarg :name
@@ -142,7 +145,13 @@ set the behaviour of the mode, define the mode methods for it."
 
 (define-mode normal-mode)
 
+(defmethod mode-output-name ((mode normal-mode))
+  "Normal")
+
 (define-mode insert-mode)
+
+(defmethod mode-output-name ((mode insert-mode))
+  "Insert")
 
 (defparameter *current-mode-holder* (get-mode-holder 'normal-mode)
   "The holder of the name and instance of the current mode. Only manipulate it
@@ -341,6 +350,9 @@ passed. ACTIVATION-SEQUENCE may be either a `string' or a list of `string's"
                   (keep-old-binding () (return-from bind-keys)))
                 (return-from bind-keys))))
         (add-mode-binding mode-name binding))))
+
+(defparameter *status-line-buffer* (make-buffer)
+  "The buffer displaying info about the current buffer, etc.")
 
 (defparameter *message-buffer* (make-buffer)
   "The buffer to output messages to.")

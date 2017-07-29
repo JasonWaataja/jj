@@ -27,6 +27,7 @@
           to.")
    (file :accessor buffer-file
          :initarg :file
+         :initform nil
          :type pathname
          :documentation "The associated file of the buffer. The file it would
          write to. Can be NIL because not all buffers are associated with a
@@ -207,6 +208,10 @@ the same errors as BUFFER-LOAD-FILE."
     (buffer-load-file buffer pathspec)
     buffer))
 
+(defun buffer-has-file-p (buffer)
+  "If BUFFER has a file associated with it."
+  (as-bool (buffer-file buffer)))
+
 (defun buffer-empty-p (buffer)
   "Returns if there is any text in the buffer."
   (not (or (zerop (length (buffer-lines buffer)))
@@ -227,3 +232,20 @@ moves it to the front of *BUFFERS*."
 if it exists."
   (when (> (cl-containers:size *buffers*) 1)
     (set-buffer (item-at *buffers* 1))))
+
+(defun last-normal-buffer ()
+  "Gets the most recently edited buffer that's not *COMMAND-BUFFER* if it
+exists, NIL otherwise."
+  (search-for-match *buffers* (lambda (buffer)
+                                (not (eql buffer *COMMAND-BUFFER*)))))
+
+(defun buffer-get-status-line (buffer)
+  "Returns a `string' that could be used for the buffer in a status line. This
+string should not be the only thing being displayed, there should be more
+information relating to other things as well."
+  (let ((strings '()))
+    (when (buffer-has-file-p buffer)
+      (push (princ-to-string (namestring (buffer-file buffer))) strings))
+    (push (format nil "L~a" (text-position-line-number (buffer-cursor-position buffer)))
+          strings)
+    (concatenate-string-list (nreverse strings))))
