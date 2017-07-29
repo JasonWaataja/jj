@@ -406,7 +406,7 @@ be taken up gaps."
 (defmacro iterate-composite-frame-children ((var frame &optional result) &body body)
   "Perform body with VAR bound to each child display of FRAME."
     `(do-container (,var (composite-frame-child-displays ,frame) ,result)
-       ,@body)))
+       ,@body))
 
 (defmacro iterate-composite-frame-children-frames ((var frame &optional result) &body body)
   "Same as ITERATE-COMPOSITE-FRAME-CHILDREN but VAR is bound to the frame of
