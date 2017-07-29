@@ -643,7 +643,7 @@ it attempts to descend recursivetly through composite frames."
                                :manager #'strong-request-manager)))
     (loop for i below 3
        for child = (make-composite-frame-display frame 5)
-       for buffer = (make-buffer 3 "Test line")
+       for buffer = (make-buffer :initial-lines 3 :default-line "Test line")
        for child-frame = (make-buffer-frame :buffer buffer
                                             :display child)
        do

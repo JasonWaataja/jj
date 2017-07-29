@@ -4,7 +4,14 @@
 (in-package #:jj)
 
 (defclass buffer ()
-  ((lines :accessor buffer-lines
+  ((name :accessor buffer-name
+         :initarg :name
+         :initform nil
+         :type string
+         :documentation "The name of the buffer. Don't access it directly, use
+         BUFFER-GET-NAME which gives it a name based on its file if it doesn't
+         have a name.")
+   (lines :accessor buffer-lines
           :initarg :lines
           :initform (make-array 0
                                 :adjustable t
@@ -192,12 +199,14 @@ io error."
   "The list of buffers for the program. Ordered by order of the last time they
 were the current buffer.")
 
-(defun make-buffer (&optional (initial-lines 0) (default-line ""))
-  (let ((buffer (make-instance 'buffer :lines (make-array initial-lines
-                                                          :adjustable t
-                                                          :fill-pointer initial-lines
-                                                          :element-type 'string
-                                                          :initial-element default-line))))
+(defun make-buffer (&key name (initial-lines 0) (default-line ""))
+  (let ((buffer (make-instance 'buffer
+                               :lines (make-array initial-lines
+                                                  :adjustable t
+                                                  :fill-pointer initial-lines
+                                                  :element-type 'string
+                                                  :initial-element default-line)
+                               :name name)))
     (container-append *buffers* buffer)
     buffer))
 
@@ -239,13 +248,33 @@ exists, NIL otherwise."
   (search-for-match *buffers* (lambda (buffer)
                                 (not (eql buffer *COMMAND-BUFFER*)))))
 
+(defun buffer-get-name (buffer)
+  "Generates a name for BUFFER. Use the already given name if it has one,
+generate one with its file otherwise."
+  (cond ((buffer-name buffer) (buffer-name buffer))
+        ((buffer-has-file-p buffer) (file-namestring (buffer-file buffer)))
+        (t "Unnamed Buffer")))
+
+(defun buffer-set-name (buffer name)
+  "Sets the name of BUFFER to NAME. The same as just using the class's
+accessor."
+  (setf (buffer-name buffer) name))
+
 (defun buffer-get-status-line (buffer)
   "Returns a `string' that could be used for the buffer in a status line. This
 string should not be the only thing being displayed, there should be more
 information relating to other things as well."
-  (let ((strings '()))
-    (when (buffer-has-file-p buffer)
-      (push (princ-to-string (namestring (buffer-file buffer))) strings))
-    (push (format nil "L~a" (text-position-line-number (buffer-cursor-position buffer)))
-          strings)
-    (concatenate-string-list (nreverse strings))))
+  (concatenate-string-list
+   (list (buffer-get-name buffer)
+         (format nil "L~a" (text-position-line-number (buffer-cursor-position buffer))))))
+
+(defun get-buffer-with-name (name)
+  "Return the first buffer in *BUFFERS* with NAME, NIL if no such buffer could
+be found."
+  (do-container (buffer *buffers* nil)
+    (when (string= name (buffer-get-name buffer))
+      (return-from get-buffer-with-name buffer))))
+
+(defun clear-buffers ()
+  "Gets rid of all buffers in *BUFFERS*."
+  (empty! *buffers*))

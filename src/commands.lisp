@@ -10,10 +10,10 @@
          :type string
          :documentation "The full name of the command.")
    (alt-names :accessor command-alt-names
-                :initarg :alt-names
-                :initform (make-container 'vector-container :test #'equal)
-                :type vector-container
-                :documentation "The alternative names the command may be called
+              :initarg :alt-names
+              :initform (make-container 'vector-container :test #'equal)
+              :type vector-container
+              :documentation "The alternative names the command may be called
                 with.")
    (action :accessor command-action
            :initarg :action
@@ -96,8 +96,8 @@ split."
   "Finds a command that matches NAME with either its NAME or one of its
 alternative names."
   (let ((command (search-for-match *commands*
-                    (lambda (command)
-                      (command-matches-p command name)))))
+                                   (lambda (command)
+                                     (command-matches-p command name)))))
     (unless command
       (signal-no-such-command-error name))
     command))
@@ -134,6 +134,20 @@ argv and associates BUFFER to it or the existing file otherwise."
     (buffer-associate-file *current-buffer* pathspec)
     (buffer-save-file *current-buffer*)))
 
+(defun buffer-action (argv)
+  "With no arguments, print out a list of buffers. If an argument is provided,
+switch the main frame to the buffer with that name."
+  (if argv
+      (let ((buffer (get-buffer-with-name (first argv))))
+        (if buffer
+            (set-buffer buffer)
+            (format-message "No such buffer: ~a" (first argv))))
+      (let ((strings '()))
+        (do-container (buffer *buffers*)
+          (push (buffer-get-name buffer) strings))
+        (set-message (concatenate-string-list (nreverse strings)
+                                              (format nil "~%"))))))
+
 (defun add-default-commands ()
   "Adds the base commands to *COMMANDS*."
   (make-command (argv "quit" "q")
@@ -141,4 +155,6 @@ argv and associates BUFFER to it or the existing file otherwise."
   (make-command (argv "load" "lo" "l")
     (load-action argv))
   (make-command (argv "save" "s")
-    (save-action argv)))
+    (save-action argv))
+  (make-command (argv "buffer" "buf" "b")
+    (buffer-action argv)))

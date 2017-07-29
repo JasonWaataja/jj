@@ -25,9 +25,9 @@ that the maximum rows and columns of the display."
   (setf *main-frame* (make-buffer-frame :display *main-display*))
   (connect-buffer-frame *current-buffer* *main-frame*)
   (composite-frame-add-frame *root-frame* *main-frame*)
-  (setf *status-line-buffer* (make-buffer)
-        *message-buffer* (make-buffer)
-        *command-buffer* (make-buffer))
+  (setf *status-line-buffer* (make-buffer :name "Status Line")
+        *message-buffer* (make-buffer :name "Messages")
+        *command-buffer* (make-buffer :name "Command Buffer"))
   (composite-frame-add-buffer *root-frame*
                               *status-line-buffer*
                               :size-manager #'buffer-frame-lines-size-manager)
@@ -44,6 +44,7 @@ that the maximum rows and columns of the display."
   (charms/ll:initscr)
   (charms/ll:cbreak)
   (charms/ll:noecho)
+  (clear-buffers)
   (multiple-value-bind (rows columns)
       (charms/ll:get-maxyx charms/ll:*stdscr*)
     (init-frames rows columns))
@@ -64,6 +65,13 @@ that the maximum rows and columns of the display."
   (loop while (not *exit-flag*)
      for ch = (charms/ll:wgetch (charms-display-window *main-display*))
      for input-chord = (ncurses-input-to-chord ch)
+     ;; TODO: Find out if EQL is the correct comparison to use here.
+     when (eql ch charms/ll:KEY_RESIZE)
+     do
+       (multiple-value-bind (rows columns)
+           (charms/ll:get-maxyx charms/ll:*stdscr*)
+         (setf (display-rows *main-display*) rows
+               (display-columns *main-display*) columns))
      do
        (when (get-setting 'dump-key-events)
          (format t "Received ncurses key ~a, equivalent to ~a~%"
