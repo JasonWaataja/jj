@@ -342,6 +342,9 @@ passed. ACTIVATION-SEQUENCE may be either a `string' or a list of `string's"
                 (return-from bind-keys))))
         (add-mode-binding mode-name binding))))
 
+(defparameter *message-buffer* (make-buffer)
+  "The buffer to output messages to.")
+
 (defparameter *command-buffer* (make-buffer)
   "The buffer for entering commands, usually at the bottom of the screen.")
 
@@ -353,3 +356,13 @@ passed. ACTIVATION-SEQUENCE may be either a `string' or a list of `string's"
   "Returns whether or not the user is currently manipulating the command
 buffer."
   (current-buffer-p *command-buffer*))
+
+(defun set-message (message)
+  "Writes MESSAGE to the message buffer."
+  (set-text *message-buffer* message))
+
+(defun format-message (control-string &rest format-arguments)
+  "Calls SET-MESSAGE with a call to FORMAT using CONTROL-STRING and
+FORMAT-ARGUMENTS."
+  (set-message (apply #'format (append (list nil control-string)
+                                       format-arguments))))

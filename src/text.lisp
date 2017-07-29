@@ -536,6 +536,19 @@ and END may be either `text-position's or `integer's."
   (with-text-positions (buffer start end)
     (apply-modification (make-text-deletion buffer start end))))
 
+(defun replace-text (buffer text start end)
+  "Replaces the text in BUFFER starting from START before END with TEXT."
+  (let ((position (text-position-absolute-position start)))
+    (delete-text buffer start end)
+    (insert-text buffer text position)))
+
+(defun set-text (buffer text)
+  "Replaces the entirety of the contents of BUFFER with TEXT."
+  (replace-text buffer
+                text
+                (buffer-first-position buffer)
+                (buffer-last-position buffer)))
+
 (defclass text-region ()
   ((buffer :accessor text-region-buffer
            :initarg :buffer

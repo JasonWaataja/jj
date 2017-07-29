@@ -29,9 +29,12 @@ about the control or alt keys."
                                       :orientation :vertical
                                       :display main-display))
            (default-buffer (make-buffer))
+           (message-buffer (make-buffer))
            (command-buffer (make-buffer))
            (default-frame (make-buffer-frame
                            :buffer default-buffer))
+           (message-frame (make-buffer-frame
+                           :buffer message-buffer))
            (command-frame (make-buffer-frame
                            :buffer command-buffer)))
       ;; This line also updates *SELECTION*, so no code is needed to initialize
@@ -44,6 +47,11 @@ about the control or alt keys."
       (setf (frame-size-manager *main-frame*)
             #'no-request-size-manager)
       (composite-frame-add-frame *root-frame* *main-frame*)
+      (setf *message-buffer* message-buffer)
+      (connect-buffer-frame *message-buffer* message-frame)
+      (setf (frame-size-manager message-frame)
+            #'buffer-frame-lines-size-manager)
+      (composite-frame-add-frame *root-frame* message-frame)
       (setf *command-buffer* command-buffer)
       (connect-buffer-frame *command-buffer* command-frame)
       (setf (frame-size-manager command-frame)

@@ -113,7 +113,7 @@ alternative names."
         (if command
             (funcall (command-action command) args)
             ;; TODO: Make this a real error output.
-            (format *error-output* "No such command for: \"~a\"~%" command-string))))))
+            (format-message "No such command for: \"~a\"" command-string))))))
 
 (defun clear-commands ()
   "Gets rid of all commands."

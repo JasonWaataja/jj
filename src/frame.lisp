@@ -360,6 +360,12 @@ horizontal."
       (frame-columns frame)
       (frame-rows frame)))
 
+(defun composite-frame-alternate-size (frame)
+  "Returns the columns of FRAME if it's vertical, columns if it's horizontal."
+  (if (horizontal-frame-p frame)
+      (frame-rows frame)
+      (frame-columns frame)))
+
 (defun composite-frame-display-size (child-display)
   "Returns the correct size of the display based on its orientation."
   (if (horizontal-frame-p (composite-frame-display-parent child-display))
@@ -462,7 +468,7 @@ the second return value or NIL if it cannot be found."
   "Writes the gap to the `composite-frame' FRAME starting at the row or column
 START depending on the orientation."
   (dotimes (i (composite-frame-gap frame))
-    (dotimes (j (composite-frame-size frame))
+    (dotimes (j (composite-frame-alternate-size frame))
       (if (horizontal-frame-p frame)
           (write-to-display (frame-display frame)
                             #\|
