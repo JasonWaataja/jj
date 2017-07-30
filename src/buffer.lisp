@@ -253,7 +253,7 @@ exists, NIL otherwise."
 generate one with its file otherwise."
   (cond ((buffer-name buffer) (buffer-name buffer))
         ((buffer-has-file-p buffer) (file-namestring (buffer-file buffer)))
-        (t "Unnamed Buffer")))
+        (t "UnnamedBuffer")))
 
 (defun buffer-set-name (buffer name)
   "Sets the name of BUFFER to NAME. The same as just using the class's

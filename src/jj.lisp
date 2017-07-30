@@ -19,15 +19,14 @@ that the maximum rows and columns of the display."
                                     :manager #'strong-request-manager
                                     :orientation :vertical
                                     :display *main-display*))
-  (set-buffer (make-buffer))
   ;; This assumes the default size manager for a frame is to give no request,
   ;; this may change later.
   (setf *main-frame* (make-buffer-frame :display *main-display*))
   (connect-buffer-frame *current-buffer* *main-frame*)
   (composite-frame-add-frame *root-frame* *main-frame*)
-  (setf *status-line-buffer* (make-buffer :name "Status Line")
+  (setf *status-line-buffer* (make-buffer :name "StatusLine")
         *message-buffer* (make-buffer :name "Messages")
-        *command-buffer* (make-buffer :name "Command Buffer"))
+        *command-buffer* (make-buffer :name "CommandBuffer"))
   (composite-frame-add-buffer *root-frame*
                               *status-line-buffer*
                               :size-manager #'buffer-frame-lines-size-manager)
@@ -38,13 +37,22 @@ that the maximum rows and columns of the display."
                               *command-buffer*
                               :size-manager #'buffer-frame-lines-size-manager))
 
+(defun make-default-buffers (argv)
+  "Creates some buffers and sets the current buffer to the correct one."
+  (cond (argv
+         (set-buffer (make-buffer-with-file (first argv)))
+         (dolist (file (rest argv))
+           (make-buffer-with-file file)))
+        (t
+         (set-buffer (make-buffer)))))
+
 (defun main (argv)
   "Entry point for jj"
-  (declare (ignore argv))
   (charms/ll:initscr)
   (charms/ll:cbreak)
   (charms/ll:noecho)
   (clear-buffers)
+  (make-default-buffers argv)
   (multiple-value-bind (rows columns)
       (charms/ll:get-maxyx charms/ll:*stdscr*)
     (init-frames rows columns))
@@ -60,7 +68,7 @@ that the maximum rows and columns of the display."
   (setf *exit-flag* nil)
   (update-status-line)
   (update-frame *root-frame*)
-  (charms/ll:refresh)
+  (refresh-display *main-display*)
   (update-time)
   (loop while (not *exit-flag*)
      for ch = (charms/ll:wgetch (charms-display-window *main-display*))
