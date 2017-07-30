@@ -46,30 +46,14 @@ that the maximum rows and columns of the display."
         (t
          (set-buffer (make-buffer)))))
 
-(defun main (argv)
-  "Entry point for jj"
-  (charms/ll:initscr)
-  (charms/ll:cbreak)
-  (charms/ll:noecho)
-  (clear-buffers)
-  (make-default-buffers argv)
-  (multiple-value-bind (rows columns)
-      (charms/ll:get-maxyx charms/ll:*stdscr*)
-    (init-frames rows columns))
-  (setf *selection-mode* :move)
-  (enter-mode 'normal-mode)
-  ;; Use this restart in case MAIN is run multiple times within one Lisp
-  ;; instance.
-  (handler-bind ((override-binding-error #'use-new-binding))
-    (enable-default-bindings))
-  ;; Just in case this is being run multiple times in one Lisp instance.
-  (clear-commands)
-  (add-default-commands)
-  (setf *exit-flag* nil)
-  (update-status-line)
-  (update-frame *root-frame*)
-  (refresh-display *main-display*)
-  (update-time)
+(defmacro with-charms (&body body)
+  "Runs charms/ll setup, then body, then guarantees its teardown."
+  `(progn
+     (unwind-protect
+          (progn ,@body)
+       (charms/ll:endwin))))
+
+(defun run-main-loop ()
   (loop while (not *exit-flag*)
      for ch = (charms/ll:wgetch (charms-display-window *main-display*))
      for input-chord = (ncurses-input-to-chord ch)
@@ -90,6 +74,30 @@ that the maximum rows and columns of the display."
        (process-input input-chord)
        (update-status-line)
        (update-frame *root-frame*)
-       (refresh-display *main-display*))
-  (charms/ll:delwin (charms-display-window *main-display*))
-  (charms/ll:endwin))
+       (refresh-display *main-display*)))
+
+
+(defun main (argv)
+  "Entry point for jj"
+  (with-charms
+    (clear-buffers)
+    (make-default-buffers argv)
+    (multiple-value-bind (rows columns)
+        (charms/ll:get-maxyx charms/ll:*stdscr*)
+      (init-frames rows columns))
+    (with-charms-displays (*main-display*)
+      (setf *selection-mode* :move)
+      (enter-mode 'normal-mode)
+      ;; Use this restart in case MAIN is run multiple times within one Lisp
+      ;; instance.
+      (handler-bind ((override-binding-error #'use-new-binding))
+        (enable-default-bindings))
+      ;; Just in case this is being run multiple times in one Lisp instance.
+      (clear-commands)
+      (add-default-commands)
+      (setf *exit-flag* nil)
+      (update-status-line)
+      (update-frame *root-frame*)
+      (refresh-display *main-display*)
+      (update-time)
+      (run-main-loop))))

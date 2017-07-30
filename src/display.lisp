@@ -160,3 +160,12 @@
 
 (defvar *main-display* (make-dummy-display 0 0)
   "The root display of the program.")
+
+(defmacro with-charms-displays ((&rest displays) &body body)
+  "Runs BODY, guaranteeing that the charms windows in DISPLAY and MORE-DISPLAYS
+are closed."
+  (alexandria:with-gensyms (display)
+    `(unwind-protect
+          (progn ,@body)
+       (dolist (,display (list ,@displays))
+         (charms/ll:delwin (charms-display-window ,display))))))
