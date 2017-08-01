@@ -7,9 +7,15 @@
 (defun ncurses-input-to-chord (ch)
   "Converts a result from GETCHAR to the corresponding chord. Doesn't yet know
 about the control or alt keys."
-  ;; TODO: The cl-charms source code said this wasn't quite right. Maybe fix
-  ;; this or something.
-  (make-chord (code-char ch)))
+  ;; TODO: The cl-charms source code said this wasn't quite right in the
+  ;; function where it transforms an ncurses input to a Lisp character. Maybe
+  ;; fix this or something.
+
+  ;; TODO: Figure out if EQL is the correct comparison
+  ;; to use here.
+  (if (eql ch charms/ll:ERR)
+      nil
+      (make-chord (code-char ch))))
 
 (defun init-frames (rows columns)
   "Sets up all the default frames with their default buffers and displays given
@@ -49,6 +55,9 @@ that the maximum rows and columns of the display."
 (defmacro with-charms (&body body)
   "Runs charms/ll setup, then body, then guarantees its teardown."
   `(progn
+     (charms/ll:initscr)
+     (charms/ll:cbreak)
+     (charms/ll:noecho)
      (unwind-protect
           (progn ,@body)
        (charms/ll:endwin))))
@@ -64,6 +73,7 @@ that the maximum rows and columns of the display."
            (charms/ll:get-maxyx charms/ll:*stdscr*)
          (setf (display-rows *main-display*) rows
                (display-columns *main-display*) columns))
+     when input-chord
      do
        (when (get-setting 'dump-key-events)
          (format t "Received ncurses key ~a, equivalent to ~a~%"
@@ -75,7 +85,6 @@ that the maximum rows and columns of the display."
        (update-status-line)
        (update-frame *root-frame*)
        (refresh-display *main-display*)))
-
 
 (defun main (argv)
   "Entry point for jj"
