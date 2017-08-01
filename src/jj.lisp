@@ -52,15 +52,17 @@ that the maximum rows and columns of the display."
         (t
          (set-buffer (make-buffer)))))
 
-(defmacro with-charms (&body body)
+(defun call-with-charms (function)
+  (charms/ll:initscr)
+  (charms/ll:cbreak)
+  (charms/ll:noecho)
+  (unwind-protect
+       (funcall function)
+    (charms/ll:endwin)))
+
+(defmacro with-charms (() &body body)
   "Runs charms/ll setup, then body, then guarantees its teardown."
-  `(progn
-     (charms/ll:initscr)
-     (charms/ll:cbreak)
-     (charms/ll:noecho)
-     (unwind-protect
-          (progn ,@body)
-       (charms/ll:endwin))))
+  `(call-with-charms (lambda () ,@body)))
 
 (defun run-main-loop ()
   (loop while (not *exit-flag*)
@@ -88,7 +90,7 @@ that the maximum rows and columns of the display."
 
 (defun main (argv)
   "Entry point for jj"
-  (with-charms
+  (with-charms ()
     (clear-buffers)
     (make-default-buffers argv)
     (multiple-value-bind (rows columns)
