@@ -89,3 +89,25 @@ before hand, etc."
   ;; TODO: Add something to handle if there are multiple buffers open to resize
   ;; windows and not close, check if files need saving, etc.
   (setf *exit-flag* t))
+
+;; TODO: Make this work with overlapped selections.
+(defun delete-selection ()
+  (let ((region-bounds (map-tree (text-selection-bounds *selection*)
+                                 #'text-position-absolute-position)))
+    (loop while region-bounds
+       for pair = (first region-bounds)
+       for rest = (rest region-bounds)
+       for start = (car pair)
+       for end = (cdr pair)
+       for size = (- end start)
+       do
+         (delete-text *current-buffer*
+                      (make-text-position *current-buffer*
+                                          start)
+                      (make-text-position *current-buffer*
+                                          end))
+         (dolist (bound rest)
+           (when (>= (first bound) end)
+             (decf (first bound) size)
+             (decf (second bound) size)))
+         (setf region-bounds rest))))

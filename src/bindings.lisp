@@ -35,5 +35,8 @@
   (bind-keys "k" #'move-cursor-up :mode-name 'normal-mode)
   (bind-keys "l" #'move-cursor-forward :mode-name 'normal-mode)
   (bind-keys "h" #'move-cursor-backward :mode-name 'normal-mode)
+  (bind-keys "v" (make-enter-selection-mode :extend) :mode-name 'normal-mode)
+  (bind-keys "V" (make-enter-selection-mode :line) :mode-name 'normal-mode)
+  (bind-keys "d" #'delete-selection :mode-name 'normal-mode)
   (bind-keys "<esc>" #'enter-normal-mode :mode-name 'insert-mode)
   (bind-keys "<esc>" #'process-escape-key :mode-name 'normal-mode))

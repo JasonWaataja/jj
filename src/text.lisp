@@ -175,7 +175,7 @@ be negative."
   "Returns the positions that is the closest to the front of the buffer."
   (loop with least = position
      for other-position in more-positions
-     when (text-position> other-position least)
+     when (text-position< other-position least)
      do
        (setf least other-position)
      finally (return least)))
@@ -648,17 +648,52 @@ default to the beginning of the buffer."
       (return-from position-in-selection-p t)))
   nil)
 
+(defun text-region-bounds (region)
+  "Returns two `text-position's that bound REGION, basically just the anchor of
+the region and one forward or backward from the cursor. These bounds are always
+forwards."
+  (let ((start (text-position-least (text-region-anchor region)
+                                    (text-region-cursor region)))
+        (end (text-position-greatest (text-region-anchor region)
+                                     (text-region-cursor region))))
+    (values start (if (text-position= end
+                                      (buffer-last-position (text-region-buffer region)))
+                      end
+                      (text-position-forward end)))))
+
+(defun text-selection-bounds (selection)
+  "Returns a `list' of cons cells containing bounds like TEXT-REGION-BOUNDS for
+each region in SELECTION."
+  (let ((bounds '()))
+    (do-regions (region selection)
+      (push (multiple-value-bind (start end)
+                (text-region-bounds region)
+              (cons start end))
+            bounds))
+    (nreverse bounds)))
+
 (defvar *selection* nil
   "The text selection for the program, should be updated the main loop and may
 not always be valid.")
 
-(defun reset-selection (&optional (buffer *current-buffer*))
+(defparameter *selection-mode* :move
+  "The way moving the cursor affects selected text. The options
+are: :MOVE (select only what the command would select), :EXTEND (extend the
+selection to include what the movement would select), and :LINE (select all
+lines between where the anchor started and where the cursor currently resides.")
+
+(defun reset-selection ()
   "Sets *SELECTION* to point to point to the cursor on *CURRENT-BUFFER*."
-  (when (current-buffer-p buffer)
-    (setf *selection* (make-text-selection *current-buffer*
-                                           (buffer-cursor-position *current-buffer*)))))
+  (setf *selection* (make-text-selection *current-buffer*
+                                         (buffer-cursor-position *current-buffer*))))
+
+(defun reset-selection-mode ()
+  "Sets *SELECTION-MODE* back to :MOVE."
+  (setf *selection-mode* :move))
 
 (defmethod apply-modification :after (modification)
   "This is important because whenever a buffer is modified the selection is
 invalid and needs to be reset."
-  (reset-selection (text-modification-buffer modification)))
+  (when (current-buffer-p (text-modification-buffer modification))
+    (reset-selection)
+    (reset-selection-mode)))

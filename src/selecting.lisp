@@ -9,12 +9,6 @@ user has already selected one or more regions, this one will return the last
 one, the one being manipulated."
   (last-item (text-selection-regions *selection*)))
 
-(defparameter *selection-mode* :move
-  "The way moving the cursor affects selected text. The options
-are: :MOVE (select only what the command would select), :EXTEND (extend the
-selection to include what the movement would select), and :LINE (select all
-lines between where the anchor started and where the cursor currently resides.")
-
 (defmacro define-selector (name (buffer-var from-position-var) &body body)
   "Define a function that when called on a `buffer' and `text-position', returns
 a `text-region' that would be selected."
@@ -58,3 +52,10 @@ an error if this variable has an invalid value."
       (:extend (text-region-move region
                                  :cursor (text-region-cursor new-region)))
       (:line (text-region-move-line-select region new-region)))))
+
+(defun make-enter-selection-mode (mode)
+  "Makes a function that enters the given selection mode and updates the
+selection as if the user had just moved onto the cursor's current position."
+  (lambda ()
+    (setf *selection-mode* mode)
+    (update-selection #'character-selector)))

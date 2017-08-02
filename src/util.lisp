@@ -98,3 +98,23 @@ SEQUENECES."
   (apply #'concatenate-separated
          (append (list 'string separation-sequence)
                  strings)))
+
+(defun traverse-tree (tree function)
+  "Goes through TREE in-order running FUNCTION on each non-nil leaf."
+  (when tree
+    (flet ((process-leaf (leaf)
+             (if (listp leaf)
+                 (traverse-tree leaf function)
+                 (funcall function leaf))))
+      (process-leaf (car tree))
+      (process-leaf (cdr tree)))))
+
+(defun map-tree (tree function)
+  "Returns a new tree with FUNCTION run on each non-nil leaf of the tree."
+  (when tree
+    (flet ((leaf-value (leaf)
+             (if (listp leaf)
+                 (map-tree leaf function)
+                 (funcall function leaf))))
+      (cons (leaf-value (car tree))
+            (leaf-value (cdr tree))))))
