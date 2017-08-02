@@ -454,31 +454,41 @@ the second return value or NIL if it cannot be found."
       (incf size (+ (composite-frame-display-size child)
                     (composite-frame-gap parent))))))
 
-;; WARNING: Relies on the sizes cache being set correctly.
-(defmethod write-to-display ((display composite-frame-display) character row column)
+(defun child-display-translate (display row column)
+  "Takes the position at ROW and COLUMN in the `composite-frame-display' display
+and returns what they would be in its parent frame."
   (let ((parent (composite-frame-display-parent display))
         (size (composite-frame-display-start display)))
     (if (horizontal-frame-p parent)
-        (write-to-display (frame-display parent)
-                          character
-                          row
-                          (+ size column))
-        (write-to-display (frame-display parent)
-                          character
-                          (+ size row)
-                          column))))
+        (values row (+ size column))
+        (values (+ size row) column))))
+
+(defun composite-frame-display-parent-display (display)
+  "Returns the display associated with the parent frame."
+  (frame-display (composite-frame-display-parent display)))
+
+;; WARNING: Relies on the sizes cache being set correctly.
+(defmethod write-to-display ((display composite-frame-display) character row column)
+  (let ((parent-display (composite-frame-display-parent-display display)))
+    (multiple-value-bind (new-row new-column)
+        (child-display-translate display row column)
+      (write-to-display parent-display character new-row new-column))))
 
 ;; WARNING: Relies on the sizes cache being set correctly.
 (defmethod read-from-display ((display composite-frame-display) row column)
-  (let ((parent (composite-frame-display-parent display))
-        (size (composite-frame-display-start display)))
-    (if (horizontal-frame-p parent)
-        (read-from-display (frame-display parent)
-                           row
-                           (+ size column))
-        (read-from-display (frame-display parent)
-                           (+ size row)
-                           column))))
+  (let ((parent-display (composite-frame-display-parent-display display)))
+    (multiple-value-bind (new-row new-column)
+        (child-display-translate display row column)
+      (read-from-display parent-display new-row new-column))))
+
+(defmethod refresh-display ((display composite-frame-display))
+  (refresh-display (composite-frame-display-parent-display display)))
+
+(defmethod start-highlight ((display composite-frame-display))
+  (start-highlight (composite-frame-display-parent-display display)))
+
+(defmethod end-highlight ((display composite-frame-display))
+  (end-highlight (composite-frame-display-parent-display display)))
 
 (defun write-gap (frame start)
   "Writes the gap to the `composite-frame' FRAME starting at the row or column

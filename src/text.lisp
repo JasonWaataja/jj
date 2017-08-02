@@ -652,12 +652,13 @@ default to the beginning of the buffer."
   "The text selection for the program, should be updated the main loop and may
 not always be valid.")
 
-(defun reset-selection ()
+(defun reset-selection (&optional (buffer *current-buffer*))
   "Sets *SELECTION* to point to point to the cursor on *CURRENT-BUFFER*."
-  (setf *selection* (make-text-selection *current-buffer*
-                                         (buffer-cursor-position *current-buffer*))))
+  (when (current-buffer-p buffer)
+    (setf *selection* (make-text-selection *current-buffer*
+                                           (buffer-cursor-position *current-buffer*)))))
 
 (defmethod apply-modification :after (modification)
   "This is important because whenever a buffer is modified the selection is
 invalid and needs to be reset."
-  (reset-selection))
+  (reset-selection (text-modification-buffer modification)))
