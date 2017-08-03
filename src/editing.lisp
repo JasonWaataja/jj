@@ -60,6 +60,20 @@
                                                new-line-position))))
   (update-selection #'character-selector))
 
+(defun move-cursor-line-begin (&optional (buffer *current-buffer*))
+  (move-mark (buffer-cursor-mark buffer)
+             (buffer-line-first-position buffer
+                                         (text-position-line-number
+                                          (buffer-cursor-position buffer))))
+  (update-selection #'character-selector))
+
+(defun move-cursor-line-end (&optional (buffer *current-buffer*))
+  (move-mark (buffer-cursor-mark buffer)
+             (buffer-line-last-position buffer
+                                        (text-position-line-number
+                                         (buffer-cursor-position buffer))))
+  (update-selection #'character-selector))
+
 (defun exit-command-mode ()
   "Assuming the user is in the command buffer, return to the previous buffer and
 clear the command buffer. This function checks to see if it's in the command
