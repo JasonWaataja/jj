@@ -74,6 +74,16 @@
                                          (buffer-cursor-position buffer))))
   (update-selection #'character-selector))
 
+(defun move-forward-word (&optional (buffer *current-buffer*))
+  (update-selection #'word-selector)
+  (move-mark (buffer-cursor-mark buffer)
+             (text-region-cursor (selection-current-region))))
+
+(defun move-backward-word (&optional (buffer *current-buffer*))
+  (update-selection #'word-reverse-selector)
+  (move-mark (buffer-cursor-mark buffer)
+             (text-region-cursor (selection-current-region))))
+
 (defun exit-command-mode ()
   "Assuming the user is in the command buffer, return to the previous buffer and
 clear the command buffer. This function checks to see if it's in the command

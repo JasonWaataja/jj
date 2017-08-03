@@ -11,7 +11,8 @@ one, the one being manipulated."
 
 (defmacro define-selector (name (buffer-var from-position-var) &body body)
   "Define a function that when called on a `buffer' and `text-position', returns
-a `text-region' that would be selected."
+a `text-region' that would be selected. It may return NIL to not update the
+selection."
   `(defun ,name (,buffer-var ,from-position-var)
      ,@body))
 
@@ -19,6 +20,58 @@ a `text-region' that would be selected."
   (make-text-region buffer
                     position
                     position))
+
+(defun word-character-p (character)
+  "Returns if CHARACTER is an alphanumeric character or an underscore."
+  (or (alphanumericp character) (char= character #\_)))
+
+(define-selector word-selector (buffer position)
+  (loop
+     initially
+       (when (or (text-position>= position (buffer-last-position buffer))
+                 (text-position>= (text-position-forward position)
+                                  (buffer-last-position buffer)))
+         (return nil))
+     with anchor = position
+     for next-position = (text-position-forward position)
+     then (text-position-forward next-position)
+     for cursor = anchor
+     then (text-position-forward cursor)
+     for character = (text-position-character next-position)
+     for found-non-word = (or found-non-word
+                              (not (word-character-p character)))
+     when (text-position>= next-position (buffer-last-position buffer))
+     do (loop-finish)
+     when (and (not found-non-word) (not (word-character-p character)))
+     do (setf found-non-word t)
+     when (and found-non-word (word-character-p character))
+     do (loop-finish)
+     finally
+       (return (make-text-region buffer anchor cursor))))
+
+(define-selector word-reverse-selector (buffer position)
+  (loop
+     initially
+       (when (text-position<= position (buffer-first-position buffer))
+         (return nil))
+     with anchor = position
+     for next-position = (text-position-backwards position)
+     then (text-position-backwards next-position)
+     for cursor = anchor
+     then (text-position-backwards cursor)
+     for character = (text-position-character next-position)
+     for found-word = (or found-word
+                          (word-character-p character))
+     when (and (not found-word) (word-character-p character))
+     do (setf found-word t)
+     when (and found-word (not (word-character-p character)))
+     do (loop-finish)
+     when (text-position<= next-position (buffer-first-position buffer))
+     do
+       (setf cursor (text-position-backwards cursor))
+       (loop-finish)
+     finally
+       (return (make-text-region buffer anchor cursor))))
 
 (defun text-region-move-line-select (region new-region)
   "Move the bounds of region so that it encompases all the lines from the anchor
@@ -47,11 +100,12 @@ an error if this variable has an invalid value."
          (new-region (funcall selector
                               *current-buffer*
                               (buffer-cursor-position *current-buffer*))))
-    (ecase *selection-mode*
-      (:move (text-region-move-to-region region new-region))
-      (:extend (text-region-move region
-                                 :cursor (text-region-cursor new-region)))
-      (:line (text-region-move-line-select region new-region)))))
+    (when new-region
+      (ecase *selection-mode*
+        (:move (text-region-move-to-region region new-region))
+        (:extend (text-region-move region
+                                   :cursor (text-region-cursor new-region)))
+        (:line (text-region-move-line-select region new-region))))))
 
 (defun make-enter-selection-mode (mode)
   "Makes a function that enters the given selection mode and updates the

@@ -49,6 +49,8 @@ same thing with the :EXTEND selection mode."
   (bind-movement-key "k" #'move-cursor-up :mode-name 'normal-mode)
   (bind-movement-key "l" #'move-cursor-forward :mode-name 'normal-mode)
   (bind-movement-key "h" #'move-cursor-backward :mode-name 'normal-mode)
+  (bind-movement-key "w" #'move-forward-word :mode-name 'normal-mode)
+  (bind-movement-key "b" #'move-backward-word :mode-name 'normal-mode)
   (bind-movement-key "t" #'move-cursor-line-begin :mode-name 'normal-mode)
   (bind-movement-key "g" #'move-cursor-line-end :mode-name 'normal-mode)
   (bind-keys "d" #'delete-selection :mode-name 'normal-mode)
