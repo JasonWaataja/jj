@@ -28,15 +28,28 @@
                                               cursor-position)))
                (apply-modification modification))))))
 
+;; TODO: Figure out if it would make more sense to pass a single character
+;; instead of a whole string, as that may make the intent more clear.
+(defun bind-movement-key (key-string movement-function &key (mode-name (current-mode-name)))
+  "Makes two new bindings. Assumes KEY is a single letter that is different
+lowercase and uppercase. The lowercase version is bound to calling the movement
+function with the :MOVE selection mode. The uppercase version is bound to the
+same thing with the :EXTEND selection mode."
+  (bind-keys (string-downcase key-string)
+             (make-with-selection-mode :move movement-function)
+             :mode-name mode-name)
+  (bind-keys (string-upcase key-string)
+             (make-with-selection-mode :extend movement-function)
+             :mode-name mode-name))
+
 (defun enable-default-bindings ()
   (bind-keys "i" #'enter-insert-mode :mode-name 'normal-mode)
   (bind-keys '("<cr>" ":") #'begin-command :mode-name 'normal-mode)
-  (bind-keys "j" #'move-cursor-down :mode-name 'normal-mode)
-  (bind-keys "k" #'move-cursor-up :mode-name 'normal-mode)
-  (bind-keys "l" #'move-cursor-forward :mode-name 'normal-mode)
-  (bind-keys "h" #'move-cursor-backward :mode-name 'normal-mode)
-  (bind-keys "v" (make-enter-selection-mode :extend) :mode-name 'normal-mode)
-  (bind-keys "V" (make-enter-selection-mode :line) :mode-name 'normal-mode)
+  (bind-movement-key "j" #'move-cursor-down :mode-name 'normal-mode)
+  (bind-movement-key "k" #'move-cursor-up :mode-name 'normal-mode)
+  (bind-movement-key "l" #'move-cursor-forward :mode-name 'normal-mode)
+  (bind-movement-key "h" #'move-cursor-backward :mode-name 'normal-mode)
   (bind-keys "d" #'delete-selection :mode-name 'normal-mode)
+  (bind-keys "c" #'delete-selection :mode-name 'normal-mode)
   (bind-keys "<esc>" #'enter-normal-mode :mode-name 'insert-mode)
   (bind-keys "<esc>" #'process-escape-key :mode-name 'normal-mode))

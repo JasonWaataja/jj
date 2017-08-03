@@ -92,6 +92,8 @@ before hand, etc."
 
 ;; TODO: Make this work with overlapped selections.
 (defun delete-selection ()
+  "Activated when the user presses 'd', removes all text in the user's
+selection."
   (let ((region-bounds (map-tree (text-selection-bounds *selection*)
                                  #'text-position-absolute-position)))
     (loop while region-bounds
@@ -111,3 +113,9 @@ before hand, etc."
              (decf (first bound) size)
              (decf (second bound) size)))
          (setf region-bounds rest))))
+
+(defun replace-selection ()
+  "Activated when the user presses 'c', deletes all text in the user's selection
+and enters insert mode."
+  (delete-selection)
+  (enter-insert-mode))

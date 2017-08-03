@@ -59,3 +59,19 @@ selection as if the user had just moved onto the cursor's current position."
   (lambda ()
     (setf *selection-mode* mode)
     (update-selection #'character-selector)))
+
+(defun call-with-selection-mode (mode function)
+  "Runs FUNCTION with *SELECTION-MODE* set to MODE. Sets it back at the end."
+  (let ((old-mode *selection-mode*))
+    (setf *selection-mode* mode)
+    (funcall function)
+    (setf *selection-mode* old-mode)))
+
+(defmacro with-selection-mode ((mode) &body body)
+  "Not really a useful macro, but wrote it anyways because
+CALL-WITH-SELECTION-MODE already exists."
+  `(call-with-selection-mode ,mode (lambda () ,@body)))
+
+(defun make-with-selection-mode (mode function)
+  "Makes a function that when called run function with the selection mode MODE."
+  (lambda () (call-with-selection-mode mode function)))
