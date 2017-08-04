@@ -30,9 +30,12 @@ that the maximum rows and columns of the display."
   (setf *main-frame* (make-buffer-frame :display *main-display*))
   (connect-buffer-frame *current-buffer* *main-frame*)
   (composite-frame-add-frame *root-frame* *main-frame*)
-  (setf *status-line-buffer* (make-buffer :name "StatusLine")
-        *message-buffer* (make-buffer :name "Messages")
-        *command-buffer* (make-buffer :name "CommandBuffer"))
+  (setf *status-line-buffer* (make-buffer :name "StatusLine"
+                                          :should-check-write nil)
+        *message-buffer* (make-buffer :name "Messages"
+                                      :should-check-write nil)
+        *command-buffer* (make-buffer :name "CommandBuffer"
+                                      :should-check-write nil))
   (composite-frame-add-buffer *root-frame*
                               *status-line-buffer*
                               :size-manager #'buffer-frame-lines-size-manager)

@@ -46,7 +46,17 @@
              :initform (make-settings-layer)
              :type settings-layer
              :documentation "A set of buffer-local settings that should override
-             the normal settings."))
+             the normal settings.")
+   (should-check-write :accessor buffer-should-check-write
+                       :initarg :should-check-write
+                       :initform t
+                       :documentation "Whether or not this buffer should be
+                       checked for a write before closing the program.")
+   (modified :accessor buffer-modified
+             :initarg :modified
+             :initform nil
+             :documentation "Whether or not the buffer has been changed since
+             its last write."))
   (:documentation "Represents a set of text to manipulate in the form of a list
   of lines. This is what the user interacts with, and there is usually one per
   file. They can be used to simply display text as well, though."))
@@ -144,7 +154,8 @@ it finds."
 form and will sign and may signal a `non-file-pathname-error'."
   (ensure-file-pathname pathspec)
   (setf (buffer-file buffer)
-        (pathname pathspec)))
+        (pathname pathspec))
+  (setf (buffer-modified buffer) nil))
 
 (defun buffer-load-file (buffer pathspec)
   "Reads the file pointed to by PATHSPEC into BUFFER. May signal a
@@ -192,21 +203,23 @@ io error."
           (loop for line across (buffer-lines buffer)
              do (write-line line writer)))
       ;; Don't catch a `file-error' here because :IF-EXISTS is :SUPERSEDE.
-      (error () (signal-unknown-file-error pathname)))))
+      (error () (signal-unknown-file-error pathname))))
+  (setf (buffer-modified buffer) nil))
 
 ;; TODO: Figure out the correct container for this.
 (defparameter *buffers* (make-container 'vector-container)
   "The list of buffers for the program. Ordered by order of the last time they
 were the current buffer.")
 
-(defun make-buffer (&key name (initial-lines 0) (default-line ""))
+(defun make-buffer (&key name (initial-lines 0) (default-line "") (should-check-write t))
   (let ((buffer (make-instance 'buffer
                                :lines (make-array initial-lines
                                                   :adjustable t
                                                   :fill-pointer initial-lines
                                                   :element-type 'string
                                                   :initial-element default-line)
-                               :name name)))
+                               :name name
+                               :should-check-write should-check-write)))
     (container-append *buffers* buffer)
     buffer))
 
@@ -278,3 +291,8 @@ be found."
 (defun clear-buffers ()
   "Gets rid of all buffers in *BUFFERS*."
   (empty! *buffers*))
+
+(defun buffer-should-write-p (buffer)
+  "Returns if BUFFER has been modified and SHOULD-CHECK-WRITE is T."
+  (and (buffer-should-check-write buffer)
+       (buffer-modified buffer)))

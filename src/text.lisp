@@ -696,4 +696,6 @@ lines between where the anchor started and where the cursor currently resides.")
 invalid and needs to be reset."
   (when (current-buffer-p (text-modification-buffer modification))
     (reset-selection)
-    (reset-selection-mode)))
+    (reset-selection-mode))
+  (setf (buffer-modified (text-modification-buffer modification))
+        t))

@@ -45,6 +45,28 @@ SET1 is in SET2."
                                ,@body))
           ,result))
 
+(defun container-to-list (container)
+  "Converts CONTAINER to a new list with the same elements."
+  (let ((as-list '()))
+    (do-container (element container)
+      (push element as-list))
+    (nreverse as-list)))
+
+(defun container-insert-list (container list &optional position)
+  "Adds each element of LIST to CONTAINER in order starting at position which
+defaults to appending to the container. Returns CONTAINER."
+  (unless position
+    (setf position (cl-containers:size container)))
+  (dolist (element list container)
+    (insert-item-at container element position)
+    (incf position)))
+
+(defun list-to-vector-container (list &key (test #'eql))
+  "Returns a new `vector-container' containing the same elements as list."
+  (let ((container (make-container 'vector-container :test test)))
+    (container-insert-list container list)
+    container))
+
 (defun array-insert-at (array value index)
   "Inserts ELEMENT in ARRAY at INDEX destructively modifying array and returning
 the result. Usually, SEFT ARRAY to the return value of this function."
