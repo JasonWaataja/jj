@@ -137,6 +137,7 @@ that the maximum rows and columns of the display."
       (clear-commands)
       (add-default-commands)
       (setf *exit-flag* nil)
+      (reset-count)
       (update-status-line)
       (update-frame *root-frame*)
       (refresh-display *main-display*)

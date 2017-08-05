@@ -13,52 +13,75 @@
   (set-buffer *command-buffer*)
   (enter-insert-mode))
 
+(defparameter *count* nil
+  "The current count being entered by the user in normal mode. Should be used
+and reset by individual functions.")
+
+(defun reset-count ()
+  "Sets *COUNT* back to its default value indicating that no count is in use."
+  (setf *count* nil))
+
+(defun call-with-count (function)
+  (if *count*
+      (loop repeat *count*
+         do (funcall function))
+      (funcall function))
+  (reset-count))
+
+(defmacro with-count (() &body body)
+  "Repeats BODY *COUNT* times, then resets *COUNT* to 0."
+  `(call-with-count (lambda () ,@body)))
+
 (defun move-cursor-down (&optional (buffer *current-buffer*))
-  (let* ((mark (buffer-cursor-mark buffer)))
-    (move-mark mark
-               (text-position-move-line (text-mark-current-position mark))))
-  (autoscroll-buffer-frame (buffer-frame buffer))
-  (update-selection #'character-selector))
+  (with-count ()
+    (let* ((mark (buffer-cursor-mark buffer)))
+      (move-mark mark
+                 (text-position-move-line (text-mark-current-position mark))))
+    (autoscroll-buffer-frame (buffer-frame buffer))
+    (update-selection #'character-selector)))
 
 (defun move-cursor-up (&optional (buffer *current-buffer*))
-  (let ((mark (buffer-cursor-mark buffer)))
-    (move-mark mark
-               (text-position-move-line (text-mark-current-position mark)
-                                        -1)))
-  (autoscroll-buffer-frame (buffer-frame buffer))
-  (update-selection #'character-selector))
+  (with-count ()
+    (let ((mark (buffer-cursor-mark buffer)))
+      (move-mark mark
+                 (text-position-move-line (text-mark-current-position mark)
+                                          -1)))
+    (autoscroll-buffer-frame (buffer-frame buffer))
+    (update-selection #'character-selector)))
 
 (defun move-cursor-forward (&optional (buffer *current-buffer*))
-  (let* ((mark (buffer-cursor-mark buffer))
-         (current-position (text-mark-current-position mark)))
-    (let ((new-line-position (1+ (text-position-line-position current-position)))
-          (line (buffer-line buffer (text-position-line-number current-position))))
-      (cond ((minusp new-line-position)
-             (setf new-line-position 0))
-            ((> new-line-position
-                (length line))
-             (setf new-line-position (length line))))
-      (move-mark mark
-                 (make-text-position-with-line buffer
-                                               (text-position-line-number current-position)
-                                               new-line-position))))
-  (update-selection #'character-selector))
+  (with-count ()
+    (let* ((mark (buffer-cursor-mark buffer))
+           (current-position (text-mark-current-position mark)))
+      (let ((new-line-position (1+ (text-position-line-position current-position)))
+            (line (buffer-line buffer (text-position-line-number current-position))))
+        (cond ((minusp new-line-position)
+               (setf new-line-position 0))
+              ((> new-line-position
+                  (length line))
+               (setf new-line-position (length line))))
+        (move-mark mark
+                   (make-text-position-with-line buffer
+                                                 (text-position-line-number current-position)
+                                                 new-line-position))))
+    (update-selection #'character-selector)))
 
 (defun move-cursor-backward (&optional (buffer *current-buffer*))
-  (let* ((mark (buffer-cursor-mark buffer))
-         (current-position (text-mark-current-position mark)))
-    (let ((new-line-position (1- (text-position-line-position current-position)))
-          (line (buffer-line buffer (text-position-line-number current-position))))
-      (cond ((minusp new-line-position)
-             (setf new-line-position 0))
-            ((> new-line-position
-                (length line))
-             (setf new-line-position (length line))))
-      (move-mark mark
-                 (make-text-position-with-line buffer
-                                               (text-position-line-number current-position)
-                                               new-line-position))))
-  (update-selection #'character-selector))
+  (with-count ()
+    (let* ((mark (buffer-cursor-mark buffer))
+           (current-position (text-mark-current-position mark)))
+      (let ((new-line-position (1- (text-position-line-position current-position)))
+            (line (buffer-line buffer (text-position-line-number current-position))))
+        (cond ((minusp new-line-position)
+               (setf new-line-position 0))
+              ((> new-line-position
+                  (length line))
+               (setf new-line-position (length line))))
+        (move-mark mark
+                   (make-text-position-with-line buffer
+                                                 (text-position-line-number current-position)
+                                                 new-line-position))))
+    (update-selection #'character-selector)))
 
 (defun move-cursor-line-begin (&optional (buffer *current-buffer*))
   (move-mark (buffer-cursor-mark buffer)
@@ -75,14 +98,16 @@
   (update-selection #'character-selector))
 
 (defun move-forward-word (&optional (buffer *current-buffer*))
-  (update-selection #'word-selector)
-  (move-mark (buffer-cursor-mark buffer)
-             (text-region-cursor (selection-current-region))))
+  (with-count ()
+    (update-selection #'word-selector)
+    (move-mark (buffer-cursor-mark buffer)
+               (text-region-cursor (selection-current-region)))))
 
 (defun move-backward-word (&optional (buffer *current-buffer*))
-  (update-selection #'word-reverse-selector)
-  (move-mark (buffer-cursor-mark buffer)
-             (text-region-cursor (selection-current-region))))
+  (with-count ()
+    (update-selection #'word-reverse-selector)
+    (move-mark (buffer-cursor-mark buffer)
+               (text-region-cursor (selection-current-region)))))
 
 (defun exit-command-mode ()
   "Assuming the user is in the command buffer, return to the previous buffer and
@@ -92,8 +117,8 @@ buffer first."
     (set-to-last-buffer)
     (clear-command-buffer)))
 
-(defun process-escape-key ()
-  "Process the escape key when in insert mode. Special behavior when in the
+(defun process-escape-key-normal-mode ()
+  "Process the escape key when in normal mode. Special behavior when in the
   command buffer."
   (exit-command-mode))
 

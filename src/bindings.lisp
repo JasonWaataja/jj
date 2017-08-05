@@ -3,7 +3,14 @@
 
 (in-package #:jj)
 
-(defmethod process-key ((mode normal-mode) chord))
+(defmethod process-key ((mode normal-mode) chord)
+  (let ((digit (digit-char-p (chord-character-code chord))))
+    (when digit
+      (setf *count* (+ (* (if *count*
+                              *count*
+                              0)
+                          10)
+                       digit)))))
 
 (defmethod process-key ((mode insert-mode) chord)
   (let ((cursor-position (text-mark-current-position
@@ -56,4 +63,4 @@ same thing with the :EXTEND selection mode."
   (bind-keys "d" #'delete-selection :mode-name 'normal-mode)
   (bind-keys "c" #'delete-selection :mode-name 'normal-mode)
   (bind-keys "<esc>" #'enter-normal-mode :mode-name 'insert-mode)
-  (bind-keys "<esc>" #'process-escape-key :mode-name 'normal-mode))
+  (bind-keys "<esc>" #'process-escape-key-normal-mode :mode-name 'normal-mode))
