@@ -15,7 +15,34 @@ about the control or alt keys."
   ;; to use here.
   (if (eql ch charms/ll:ERR)
       nil
-      (make-chord (code-char ch))))
+      ;; TODO: Figure how to do this whole thing more in Lisp if
+      ;; possible. Running (princ-to-string (code-char ch)) does a very similar
+      ;; thing, and I think detecting control characters could use the same code
+      ;; with the above code instead of a call to keyname.
+      (let ((as-string (cffi:foreign-string-to-lisp (charms/ll:keyname ch)))
+            (as-char (code-char ch)))
+        ;; TODO: Check if checking STANDARD-CHAR-P could replace these checks.
+        ;; From https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node22.html, #\Esc was added.
+        (cond ((or (char= as-char #\Backspace)
+                   (char= as-char #\Tab)
+                   (char= as-char #\Linefeed)
+                   (char= as-char #\Page)
+                   (char= as-char #\Return)
+                   (char= as-char #\Rubout)
+                   (char= as-char #\Esc))
+               (make-chord (code-char ch)))
+              ((and (> (length as-string) 1)
+                    (char= (char as-string 0) #\^))
+               ;; TODO: Check for the DEL key, https://linux.die.net/man/3/keyname
+               (make-chord (char as-string 1) :control))
+              ;; TODO: Get ncurses to actually return something of this form
+              ;; like it says it should in documentation. This code doesn't
+              ;; really do anything right now.
+              ((and (> (length as-string) 2)
+                    (string= as-string "M-" :end1 2))
+               (make-chord (char as-string 2) :mod))
+              (t
+               (make-chord (code-char ch)))))))
 
 (defun init-frames (rows columns)
   "Sets up all the default frames with their default buffers and displays given
@@ -92,7 +119,7 @@ that the maximum rows and columns of the display."
        (refresh-display *main-display*)))
 
 (defun main (argv)
-  "Entry point for jj"
+  "Entry point for jj."
   (with-charms ()
     (clear-buffers)
     (make-default-buffers argv)
