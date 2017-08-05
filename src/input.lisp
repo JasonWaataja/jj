@@ -37,6 +37,11 @@
                    :character-code character-code
                    :modifiers modifier-container)))
 
+(define-pretty-print (chord stream chord)
+  (format stream "#<CHORD ~a~{, ~a~}>"
+          (chord-character-code chord)
+          (container-to-list (chord-modifiers chord))))
+
 (defclass key-sequence ()
   ((keys :reader key-sequence-keys
          :initarg :keys

@@ -244,6 +244,9 @@ variable name, not some arbitrary expression. It wouldn't make sense that way."
       `(let (,@to-text-position-forms)
          ,@body))))
 
+(define-pretty-print (text-position stream position)
+  (format stream "#<TEXT-POSITION: ~a>" (text-position-absolute-position position)))
+
 (defun buffer-get-text (buffer &optional
                                  (start (buffer-first-position buffer))
                                  (end (buffer-last-position buffer)))

@@ -268,6 +268,9 @@ generate one with its file otherwise."
         ((buffer-has-file-p buffer) (file-namestring (buffer-file buffer)))
         (t "UnnamedBuffer")))
 
+(define-pretty-print (buffer stream buffer)
+  (format stream "#<BUFFER: ~a>" (buffer-get-name buffer)))
+
 (defun buffer-set-name (buffer name)
   "Sets the name of BUFFER to NAME. The same as just using the class's
 accessor."

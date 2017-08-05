@@ -140,3 +140,9 @@ SEQUENECES."
                  (funcall function leaf))))
       (cons (leaf-value (car tree))
             (leaf-value (cdr tree))))))
+
+(defmacro define-pretty-print ((type stream var) &body body)
+  "Runs SET-PPRINT-DISPATCH with a lambda with STREAM and VAR bound to a stream
+and object to be print."
+  `(set-pprint-dispatch ',type (lambda (,stream ,var)
+                                 ,@body)))
