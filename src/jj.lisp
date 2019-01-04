@@ -73,11 +73,11 @@ that the maximum rows and columns of the display."
                               *command-buffer*
                               :size-manager #'buffer-frame-lines-size-manager))
 
-(defun make-default-buffers (argv)
+(defun make-default-buffers (files)
   "Creates some buffers and sets the current buffer to the correct one."
-  (cond (argv
-         (set-buffer (make-buffer-with-file (first argv)))
-         (dolist (file (rest argv))
+  (cond (files
+         (set-buffer (make-buffer-with-file (first files)))
+         (dolist (file (rest files))
            (make-buffer-with-file file)))
         (t
          (set-buffer (make-buffer)))))
@@ -122,7 +122,7 @@ that the maximum rows and columns of the display."
   "Entry point for jj."
   (with-charms ()
     (clear-buffers)
-    (make-default-buffers argv)
+    (make-default-buffers (rest argv))
     (multiple-value-bind (rows columns)
         (charms/ll:get-maxyx charms/ll:*stdscr*)
       (init-frames rows columns))
